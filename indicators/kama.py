@@ -8,6 +8,8 @@ from data.stock import get_stock_prices
 import pandas as pd
 from ta.momentum import KAMAIndicator
 from ta.trend import EMAIndicator
+import pytz
+
 # ---------------------------
 # KAMA Analysis Function
 # ---------------------------
@@ -20,7 +22,11 @@ def kama_analysis(ticker):
     
     # Function to convert period to start and end dates
     def convert_period_to_dates(period):
-        end_date = datetime.now()
+        # Define Beijing timezone
+        beijing_tz = pytz.timezone('Asia/Shanghai')  # Beijing shares the same timezone as Shanghai
+
+        # Get current time in Beijing
+        end_date = datetime.now(beijing_tz)
         
         # Calculate start date based on the selected period
         if period == "1mo":

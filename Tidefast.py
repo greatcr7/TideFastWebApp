@@ -121,8 +121,7 @@ def home():
             row_indicators = indicators[i:i + indicators_per_row]
             for col, indicator in zip(cols, row_indicators):
                 with col:
-                    if st.button(indicator, key=indicator):
-                        set_selected_indicator(indicator)
+                    st.button(indicator, key=indicator, on_click=set_selected_indicator_dropdown)
 
     # Add some spacing before disclaimers
     st.markdown("\n" * 5)
