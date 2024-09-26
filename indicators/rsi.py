@@ -44,17 +44,18 @@ def rsi_analysis():
 
     # User input function
     def user_input_features():
-        ticker = st.sidebar.text_input("股票代码/名称 (e.g. 特斯拉, 600519)", value="AAPL")
-        period = st.sidebar.selectbox("Period", options=["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y"], index=3)
-        interval = st.sidebar.selectbox("Interval", options=["1d", "1wk", "1mo"], index=1)
+        ticker = st.sidebar.text_input("股票代码/名称 (e.g. 特斯拉, 600519)", value="600519.SH")
+        period = st.sidebar.selectbox("时间跨度", options=["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y"], index=3)
+        # interval = st.sidebar.selectbox("Interval", options=["1d", "1wk", "1mo"], index=1)
         
+
         # Convert period to start and end dates
         start_date, end_date = convert_period_to_dates(period)
         
-        return ticker.upper(), start_date, end_date, interval
+        return ticker.upper(), start_date, end_date
 
     # Getting user input
-    ticker, start_date, end_date, interval = user_input_features()
+    ticker, start_date, end_date = user_input_features()
 
 
     # Step 1: Fetch Historical Data using custom get_stock_prices function
@@ -180,11 +181,11 @@ def rsi_analysis():
         latest_price = df['close'].iloc[-1]
 
         if latest_rsi > 50 and latest_price > latest_ema50 and latest_price > latest_ema200:
-            trend = "Uptrend"
+            trend = "上升趋势 (Uptrend)"
         elif latest_rsi < 50 and latest_price < latest_ema50 and latest_price < latest_ema200:
-            trend = "Downtrend"
+            trend = "下降趋势 (Downtrend)"
         else:
-            trend = "Sideways/Range-Bound"
+            trend = "震荡区间 (Sideways)"
 
         return trend, latest_price
 
@@ -196,7 +197,7 @@ def rsi_analysis():
         Plot the RSI along with price data, EMAs, and divergences using Plotly.
         """
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
-                            vertical_spacing=0.05, subplot_titles=(f'Price and EMAs for {ticker}', 'Relative Strength Index (RSI)'),
+                            vertical_spacing=0.05, subplot_titles=(f'{ticker}的股价和价格均线', '相对强弱指数 (RSI)'),
                             row_width=[0.2, 0.7])
 
         # Candlestick for Price
@@ -263,7 +264,7 @@ def rsi_analysis():
                 color = 'yellow'
             fig.add_hline(y=50, line=dict(color=color, dash='dot'), row=2, col=1)
 
-        fig.update_layout(title=f'Relative Strength Index (RSI) and Price for {ticker}',
+        fig.update_layout(title=f'相对强弱指数 (RSI)',
                           yaxis_title='Price',
                           xaxis_title='',
                           template='plotly_dark',
@@ -386,21 +387,21 @@ def rsi_analysis():
     )
 
     # Display Interpretations
-    st.markdown("## 📄 Detailed Interpretation")
+    st.markdown("### 📄 指标解读")
 
     # Tabs for English and Chinese
-    tab1, tab2 = st.tabs(["English", "中文"])
+    tab1, tab2 = st.tabs(["中文", "English"])
 
     with tab1:
-        st.markdown(interpret_en)
-
-    with tab2:
         st.markdown(interpret_cn)
 
+    with tab2:
+        st.markdown(interpret_en)
+
     # Optional: Display Data Table
-    with st.expander("📊 Show Data"):
+    with st.expander("📊 查看原始数据"):
         st.dataframe(df)
 
     # Footer
     st.markdown("---")
-    st.markdown("Developed with ❤️ by TideFast AI")
+    st.markdown("Developed with ❤️ by TideFast")
