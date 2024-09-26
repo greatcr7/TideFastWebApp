@@ -4,14 +4,14 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from ta.momentum import RSIIndicator
 from scipy.signal import find_peaks
-
+import re
 from data.stock import get_stock_prices
 
 # ---------------------------
 # RSI Analysis Demo Function
 # ---------------------------
 
-def rsi_analysis():
+def rsi_analysis(ticker):
     st.markdown(f"# 📈 RSI")
 
     # Sidebar for user inputs specific to RSI Analysis
@@ -44,18 +44,16 @@ def rsi_analysis():
 
     # User input function
     def user_input_features():
-        ticker = st.sidebar.text_input("股票代码/名称 (e.g. 特斯拉, 600519)", value="600519.SH")
         period = st.sidebar.selectbox("时间跨度", options=["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y"], index=3)
         # interval = st.sidebar.selectbox("Interval", options=["1d", "1wk", "1mo"], index=1)
         
-
         # Convert period to start and end dates
         start_date, end_date = convert_period_to_dates(period)
         
-        return ticker.upper(), start_date, end_date
+        return start_date, end_date
 
     # Getting user input
-    ticker, start_date, end_date = user_input_features()
+    start_date, end_date = user_input_features()
 
 
     # Step 1: Fetch Historical Data using custom get_stock_prices function
@@ -287,16 +285,16 @@ def rsi_analysis():
         interpretation_cn = ""
 
         # 1. Trend Analysis
-        interpretation_en += f"## Current Market Trend: {trend}\n\n"
+        interpretation_en += f"###### Current Market Trend: {trend}\n\n"
         interpretation_en += f"**Current Price**: {current_price:.2f}\n\n"
 
-        interpretation_cn += f"## 当前市场趋势：{trend}\n\n"
+        interpretation_cn += f"###### 当前市场趋势：{trend}\n\n"
         interpretation_cn += f"**当前价格**：{current_price:.2f}\n\n"
 
         # 2. Confluence Analysis
         if confluences:
-            interpretation_en += "### Confluence Zones Detected:\n"
-            interpretation_cn += "### 检测到的共振区：\n"
+            interpretation_en += "###### Confluence Zones Detected:\n"
+            interpretation_cn += "###### 检测到的共振区：\n"
             for key, indicators in confluences.items():
                 if key == 'Bullish Confluence':
                     interpretation_en += f"- **Bullish Confluence**: RSI is above 50 ({indicators['RSI']:.2f}), and the price is above both EMA50 ({indicators['EMA50']:.2f}) and EMA200 ({indicators['EMA200']:.2f}).\n"
@@ -307,12 +305,12 @@ def rsi_analysis():
             interpretation_en += "\n"
             interpretation_cn += "\n"
         else:
-            interpretation_en += "### No Confluence Zones Detected.\n\n"
-            interpretation_cn += "### 未检测到共振区。\n\n"
+            interpretation_en += "###### No Confluence Zones Detected.\n\n"
+            interpretation_cn += "###### 未检测到共振区。\n\n"
 
         # 3. Price Position Analysis
-        interpretation_en += "### Price Position Relative to RSI and EMAs:\n"
-        interpretation_cn += "### 当前价格相对于 RSI 和 EMA 的位置：\n"
+        interpretation_en += "###### Price Position Relative to RSI and EMAs:\n"
+        interpretation_cn += "###### 当前价格相对于 RSI 和 EMA 的位置：\n"
         if trend == "Uptrend":
             interpretation_en += "- The current price is **above** EMA50 and EMA200, with RSI above 50, indicating strong buying pressure.\n"
             interpretation_cn += "- 当前价格 **高于** EMA50 和 EMA200，且 RSI 高于50，表明强劲的买入压力。\n"
@@ -326,8 +324,8 @@ def rsi_analysis():
         interpretation_cn += "\n"
 
         # 4. Actionable Recommendations
-        interpretation_en += "### Actionable Recommendations:\n"
-        interpretation_cn += "### 可操作的建议：\n"
+        interpretation_en += "###### Actionable Recommendations:\n"
+        interpretation_cn += "###### 可操作的建议：\n"
 
         # Bullish Confluence
         if 'Bullish Confluence' in confluences:
@@ -355,24 +353,24 @@ def rsi_analysis():
             interpretation_cn += "\n- **共振区**：由于 RSI 与 EMA 对齐，接近这些区域的交易成功概率更高。\n"
 
         # Breakout Scenarios
-        interpretation_en += "\n### Breakout Scenarios:\n"
-        interpretation_cn += "\n### 突破情景：\n"
+        interpretation_en += "\n###### Breakout Scenarios:\n"
+        interpretation_cn += "\n###### 突破情景：\n"
         interpretation_en += "- **Bullish Breakout**: If the price breaks above EMA200 with increasing RSI and volume, consider **entering a long position**.\n"
         interpretation_cn += "- **看涨突破**：如果价格在 RSI 和成交量增加的情况下突破 EMA200，考虑 **建立多头仓位**。\n"
         interpretation_en += "- **Bearish Breakout**: If the price breaks below EMA200 with decreasing RSI and volume, consider **entering a short position**.\n"
         interpretation_cn += "- **看跌突破**：如果价格在 RSI 和成交量减少的情况下突破 EMA200，考虑 **建立空头仓位**。\n"
 
         # Risk Management
-        interpretation_en += "\n### Risk Management:\n"
-        interpretation_cn += "\n### 风险管理：\n"
+        interpretation_en += "\n###### Risk Management:\n"
+        interpretation_cn += "\n###### 风险管理：\n"
         interpretation_en += "- **Stop-Loss**: Place stop-loss orders just beyond EMA50 or EMA200 to manage risk.\n"
         interpretation_cn += "- **止损**：在 EMA50 或 EMA200 之外稍微放置止损订单以管理风险。\n"
         interpretation_en += "- **Take-Profit**: Set target levels based on recent support/resistance levels or use a trailing stop to lock in profits.\n"
         interpretation_cn += "- **止盈**：根据近期的支撑/阻力位设置目标水平或使用移动止盈以锁定利润。\n"
 
         # Market Conditions
-        interpretation_en += "\n### Optimal Market Conditions for Applying This Strategy:\n"
-        interpretation_cn += "\n### 应用此策略的最佳市场条件：\n"
+        interpretation_en += "\n###### Optimal Market Conditions for Applying This Strategy:\n"
+        interpretation_cn += "\n###### 应用此策略的最佳市场条件：\n"
         interpretation_en += "- **Trending Markets**: Most effective in clear uptrends or downtrends where RSI and EMAs confirm the direction.\n"
         interpretation_cn += "- **趋势市场**：在 RSI 和 EMA 确认方向的明显上升或下降趋势中最为有效。\n"
         interpretation_en += "- **High Volume**: Ensure significant price movements are supported by high volume to validate RSI signals.\n"
@@ -387,7 +385,7 @@ def rsi_analysis():
     )
 
     # Display Interpretations
-    st.markdown("### 📄 指标解读")
+    st.markdown("##### 📄 指标解读")
 
     # Tabs for English and Chinese
     tab1, tab2 = st.tabs(["中文", "English"])
@@ -401,7 +399,3 @@ def rsi_analysis():
     # Optional: Display Data Table
     with st.expander("📊 查看原始数据"):
         st.dataframe(df)
-
-    # Footer
-    st.markdown("---")
-    st.markdown("Developed with ❤️ by TideFast")

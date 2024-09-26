@@ -1,68 +1,208 @@
+import json
 import streamlit as st
 from indicators.rsi import rsi_analysis
-
-# Set the page configuration
-st.set_page_config(page_title="历澜投资", layout="wide", page_icon="images/logo.png")
-
-# Sidebar for logo and demo selection
-logo_path = "images/logo.png"  # Update with your actual logo path
-
-# Display the logo at 25% width of the sidebar
-sidebar_width = 500  # Estimated sidebar width (in pixels)
-logo_width = sidebar_width * 0.1  # Set logo width to 25% of the sidebar width
-
-st.sidebar.image(logo_path, width=int(logo_width))  # Set the image width to 25% of the sidebar width
+# from indicators.kama import kama_analysis
+# Import other indicator functions as needed, e.g.,
+# from indicators.financials import financials_analysis
+# from indicators.ml_predictions import ml_predictions_analysis
 
 # ---------------------------
-# Home Page
+# Page Configuration
+# ---------------------------
+st.set_page_config(
+    page_title="历澜投资",
+    layout="wide",
+    page_icon="images/logo.png"
+)
+
+# ---------------------------
+# Custom CSS for Button Styling
+# ---------------------------
+def local_css():
+    st.markdown("""
+    <style>
+    /* Style for all buttons */
+    div.stButton > button {
+        width: 100%;
+        height: 60px;
+        font-size: 18px;
+        font-weight: bold;
+        background-color: transparent; /* Transparent background */
+        border: 2px solid 
+        border-radius: 12px; /* Rounded corners */
+        transition: background-color 0.3s, color 0.3s; /* Smooth transition */
+        cursor: pointer;
+    }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+local_css()
+
+# ---------------------------
+# Initialize Session State
+# ---------------------------
+if 'selected_indicator' not in st.session_state:
+    st.session_state.selected_indicator = None
+if 'selected_stock' not in st.session_state:
+    st.session_state.selected_stock = None
+
+# ---------------------------
+# Callback Functions
 # ---------------------------
 
+def set_selected_indicator(indicator):
+    st.session_state.selected_indicator = indicator
+
+def set_selected_indicator_dropdown():
+    selected_indicator = st.session_state.dropdown_selection
+    if selected_indicator != "请选择一个指标":
+        st.session_state.selected_indicator = selected_indicator
+
+def indicator_return_home():
+    st.session_state.selected_indicator = None
+    st.session_state.selected_stock = None
+    st.session_state.selected_stock_display = "请选择一个股票"
+    st.session_state.dropdown_selection = "请选择一个指标"
+
+# Load stock data from JSON
+def load_stock_data(json_path='stocks.json'):
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            stocks = json.load(f)
+        return stocks
+    except FileNotFoundError:
+        st.error(f"股票数据文件未找到: {json_path}")
+        return []
+    except json.JSONDecodeError:
+        st.error("股票数据文件格式错误。")
+        return []
+
+stocks = load_stock_data()
+
+# Create a mapping from display name to ticker
+stock_display_to_ticker = {f"{stock['cname']} ({stock['ticker']})": stock['ticker'] for stock in stocks}
+stock_display_names = list(stock_display_to_ticker.keys())
+
+# ---------------------------
+# Indicator Mapping
+# ---------------------------
+page_names_to_funcs = {
+    "RSI指标 📈": rsi_analysis,
+    "KAMA均线 📉": None,  # Replace with actual functions when available
+    "财务数据分析 💼": None,  # Replace with actual functions
+    "盈利能力分析 💰": None,
+    "股票价格预测 🤖": None,
+    "趋势分析 📈": None,
+    "MACD指标 📊": None,  # Placeholder for additional indicators
+    "布林带指标 📈": None,
+    "市盈率分析 📉": None,
+    "资产负债分析 📊": None,
+    "风险评估 🔍": None,
+    "波动率预测 📉": None
+}
+
+# ---------------------------
+# Home Page Function (Recommended Indicators Grid)
+# ---------------------------
 def home():
-    st.write("# 欢迎来到历澜投资! 👋")
-    st.sidebar.success("☝️ 试试看你的股票！")
+    st.markdown("### 推荐指标")
+    categories = {
+        "技术指标 🔍": ["RSI指标 📈", "KAMA均线 📉", "MACD指标 📊", "布林带指标 📈"],
+        "基本面分析 💼": ["财务数据分析 💼", "盈利能力分析 💰", "市盈率分析 📉", "资产负债分析 📊"],
+        "机器学习预测 🤖": ["股票价格预测 🤖", "趋势分析 📈", "风险评估 🔍", "波动率预测 📉"]
+    }
+    for category, indicators in categories.items():
+        st.markdown(f"#### {category}")
+        indicators_per_row = 4
+        for i in range(0, len(indicators), indicators_per_row):
+            cols = st.columns(indicators_per_row)
+            row_indicators = indicators[i:i + indicators_per_row]
+            for col, indicator in zip(cols, row_indicators):
+                with col:
+                    if st.button(indicator, key=indicator):
+                        set_selected_indicator(indicator)
+
+    # Add some spacing before disclaimers
+    st.markdown("\n" * 5)
 
     st.markdown(
         """
-        历澜投资致力于为交易者提供全面的股票分析工具。通过结合**技术指标**、**基本面分析**和**机器学习模型**，帮助您做出更明智的投资决策。
+        ##### Legal Disclaimer
 
-        ### 我们的功能
-
-        - **技术指标分析**：利用如相对强弱指数（RSI）、KAMA均线等技术指标评估股票的买卖信号。
-        - **基本面分析**：深入查看公司的财务数据、盈利能力和市场表现，了解其内在价值。
-        - **机器学习预测**：应用先进的机器学习算法预测股票价格走势，提升分析的准确性。
-
-        ### 如何使用
-
-        从左侧的下拉菜单中选择您感兴趣的分析工具，开始探索股票数据的不同方面。无论您是经验丰富的交易者还是刚入门的新手，历澜投资都能为您提供有价值的洞见。
-
-        ### 资源与支持
-
-        - 了解更多关于我们的信息，请访问 [历澜投资官网](https://tidefast.com)
+        This platform is intended for informational purposes only and does not constitute investment advice. Always conduct your own research or consult with a qualified financial advisor before making any investment decisions.
 
         ---
-        ### Legal Disclaimer
+        ##### 法律免责声明
 
-        **This platform is intended for informational purposes only and does not constitute investment advice. Always conduct your own research or consult with a qualified financial advisor before making any investment decisions.**
-
-        ---
-        ### 法律免责声明
-
-        **本平台仅供参考，並不构成投资建议。请在做出任何投资决定之前，务必自行研究或咨询专业的金融顾问。**
+        本平台仅供参考，並不构成投资建议。请在做出任何投资决定之前，务必自行研究或咨询专业的金融顾问。
         """
     )
 
 # ---------------------------
-# Mapping Demos to Names
+# Main App Execution
 # ---------------------------
+def main():
+    # ---------------------------
+    # Selection Bar (Fixed at Top)
+    # ---------------------------
+    selection_container = st.container()
+    with selection_container:
+        selection_cols = st.columns(2)
 
-page_names_to_funcs = {
-    "首页": home,           # Added Home option
-    "RSI指标": rsi_analysis  # RSI Analysis
-}
+        with selection_cols[0]:
+            st.markdown("### 选择股票 📊")
+            selected_stock_display = st.selectbox(
+                "搜索并选择股票",
+                ["请选择一个股票"] + stock_display_names,
+                key='selected_stock_display',
+                help="输入股票名称或代码以搜索并选择股票",
+                on_change=set_selected_indicator_dropdown,
+            )
 
-# ---------------------------
-# Render Selected Indicator
-# ---------------------------
+            if selected_stock_display != "请选择一个股票":
+                selected_stock = stock_display_to_ticker[selected_stock_display]
+                st.session_state.selected_stock = selected_stock
+                st.success(f"已选择股票: {selected_stock_display}")
+            else:
+                st.session_state.selected_stock = None
 
-indicator_name = st.sidebar.selectbox("选择指标", page_names_to_funcs.keys())
-page_names_to_funcs[indicator_name]()
+        with selection_cols[1]:
+            st.markdown("### 选择技术指标 📈")
+            dropdown_selection = st.selectbox(
+                "选择指标",
+                ["请选择一个指标"] + list(page_names_to_funcs.keys()),
+                key='dropdown_selection',
+                on_change=set_selected_indicator_dropdown,
+                help="在此输入并选择您想要查看的指标"
+            )
+
+            if st.session_state.selected_indicator:
+                st.success(f"已选择指标: {st.session_state.selected_indicator}")
+
+    st.markdown("---")  # Separator
+
+    # ---------------------------
+    # Display Content Below Selection Bar
+    # ---------------------------
+    if st.session_state.selected_indicator:
+        if st.session_state.selected_stock:
+            indicator = st.session_state.selected_indicator
+            stock = st.session_state.selected_stock
+            analysis_func = page_names_to_funcs.get(indicator)
+
+            if analysis_func:
+                analysis_func(stock)
+            else:
+                st.error("所选指标的分析功能尚未实现。")
+                # if st.button("返回主页"):
+                #     indicator_return_home()
+        else:
+            st.warning("请先选择一个股票，然后再选择一个指标进行分析。")
+            # if st.button("返回主页"):
+            #     indicator_return_home()
+    else:
+        home()
+
+if __name__ == "__main__":
+    main()
