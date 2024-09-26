@@ -8,7 +8,7 @@ import re
 from data.stock import get_stock_prices
 
 # ---------------------------
-# RSI Analysis Demo Function
+# RSI Analysis Function
 # ---------------------------
 
 def rsi_analysis(ticker):

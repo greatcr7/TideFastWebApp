@@ -1,5 +1,6 @@
 import json
 import streamlit as st
+from indicators.kama import kama_analysis
 from indicators.rsi import rsi_analysis
 # from indicators.kama import kama_analysis
 # Import other indicator functions as needed, e.g.,
@@ -89,7 +90,7 @@ stock_display_names = list(stock_display_to_ticker.keys())
 # ---------------------------
 page_names_to_funcs = {
     "RSI指标 📈": rsi_analysis,
-    "KAMA均线 📉": None,  # Replace with actual functions when available
+    "KAMA均线 📉": kama_analysis,  # Replace with actual functions when available
     "财务数据分析 💼": None,  # Replace with actual functions
     "盈利能力分析 💰": None,
     "股票价格预测 🤖": None,
