@@ -445,7 +445,7 @@ def cmf_analysis(ticker):
     )
 
     # Display Interpretations
-    st.markdown("##### 📄 指标解读 (Indicator Interpretation)")
+    st.markdown("##### 📄 指标解读")
 
     # Tabs for English and Chinese
     tab1, tab2 = st.tabs(["中文", "English"])

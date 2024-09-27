@@ -1,6 +1,7 @@
 import json
 import streamlit as st
 from indicators.bollinger import bollinger_band_analysis
+from indicators.choppiness import choppiness_analysis
 from indicators.cmf import cmf_analysis
 from indicators.ichimoku import ichimoku_analysis
 from indicators.kama import kama_analysis
@@ -97,16 +98,9 @@ page_names_to_funcs = {
     "布林带指标 📊": bollinger_band_analysis,
     "蔡金资金流量 💰": cmf_analysis,
     "抛物线转向指标 📈": parabolic_sar_analysis,
-    "一目云均衡图 📈": ichimoku_analysis,
+    "一目云均衡图 💼": ichimoku_analysis,
     "肯特纳通道 📊": keltner_channel_analysis, 
-    "财务数据分析 💼": None,
-    "盈利能力分析 💰": None,
-    "股票价格预测 🤖": None,
-    "趋势分析 📈": None,
-    "市盈率分析 📉": None,
-    "资产负债分析 📊": None,
-    "风险评估 🔍": None,
-    "波动率预测 📉": None
+    "波动指数 💼": choppiness_analysis,
 }
 
 # ---------------------------
@@ -119,15 +113,15 @@ def home():
         "基本面分析 💼": ["财务数据分析 💼", "盈利能力分析 💰", "市盈率分析 📉", "资产负债分析 📊"],
         "机器学习预测 🤖": ["股票价格预测 🤖", "趋势分析 📈", "风险评估 🔍", "波动率预测 📉"]
     }
-    for category, indicators in categories.items():
-        st.markdown(f"#### {category}")
-        indicators_per_row = 4
-        for i in range(0, len(indicators), indicators_per_row):
-            cols = st.columns(indicators_per_row)
-            row_indicators = indicators[i:i + indicators_per_row]
-            for col, indicator in zip(cols, row_indicators):
-                with col:
-                    st.button(indicator, key=indicator, on_click=set_selected_indicator_dropdown)
+    # for category, indicators in categories.items():
+    #     st.markdown(f"#### {category}")
+    #     indicators_per_row = 4
+    #     for i in range(0, len(indicators), indicators_per_row):
+    #         cols = st.columns(indicators_per_row)
+    #         row_indicators = indicators[i:i + indicators_per_row]
+    #         for col, indicator in zip(cols, row_indicators):
+    #             with col:
+    #                 st.button(indicator, key=indicator, on_click=set_selected_indicator_dropdown)
 
     # Add some spacing before disclaimers
     st.markdown("\n" * 5)
