@@ -13,10 +13,10 @@ import pytz
 # ---------------------------
 
 def rsi_analysis(ticker):
-    st.markdown(f"# 📈 RSI Analysis for {ticker.upper()}")
+    st.markdown(f"# 📈 RSI for {ticker.upper()}")
 
     # Sidebar for user inputs specific to RSI Analysis
-    st.sidebar.header("📊 指标参数 (Indicator Parameters)")
+    st.sidebar.header("📊 指标参数")
 
     # Function to convert period to start and end dates
     def convert_period_to_dates(period):
