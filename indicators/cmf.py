@@ -460,18 +460,3 @@ def cmf_analysis(ticker):
     with st.expander("📊 查看原始数据 (View Raw Data)"):
         st.dataframe(df)
 
-# ---------------------------
-# Main Streamlit App
-# ---------------------------
-
-def main():
-    st.title("📊 技术分析工具 (Technical Analysis Tools)")
-
-    # User inputs for ticker
-    ticker = st.text_input("请输入股票代码 (Enter Stock Ticker)", value="AAPL")
-
-    if ticker:
-        cmf_analysis(ticker.upper())
-
-if __name__ == "__main__":
-    main()
