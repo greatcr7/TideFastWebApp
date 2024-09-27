@@ -1,13 +1,17 @@
 import json
 import streamlit as st
+from indicators.fib_retracement import fibonacci_retracement_analysis
+from indicators.alma import alma_analysis
 from indicators.bollinger import bollinger_band_analysis
 from indicators.choppiness import choppiness_analysis
+from indicators.cks import cks_analysis
 from indicators.cmf import cmf_analysis
 from indicators.ichimoku import ichimoku_analysis
 from indicators.kama import kama_analysis
 from indicators.kc import keltner_channel_analysis
 from indicators.parabolic_sar import parabolic_sar_analysis
 from indicators.rsi import rsi_analysis
+from indicators.stc import stc_analysis
 # from indicators.financials import financials_analysis
 # from indicators.ml_predictions import ml_predictions_analysis
 
@@ -95,12 +99,16 @@ stock_display_names = list(stock_display_to_ticker.keys())
 page_names_to_funcs = {
     "RSI指标 📈": rsi_analysis,
     "KAMA均线 💼": kama_analysis,
+    "斐波那契回调线 💰": fibonacci_retracement_analysis,
     "布林带指标 📊": bollinger_band_analysis,
+    "波动指数 💼": choppiness_analysis,
     "蔡金资金流量 💰": cmf_analysis,
     "抛物线转向指标 📈": parabolic_sar_analysis,
     "一目云均衡图 💼": ichimoku_analysis,
     "肯特纳通道 📊": keltner_channel_analysis, 
-    "波动指数 💼": choppiness_analysis,
+    "CKS指数 📈": cks_analysis,
+    "ALMA移动平均数 📊": alma_analysis,
+    "沙夫趋势周期 💼": stc_analysis,
 }
 
 # ---------------------------
