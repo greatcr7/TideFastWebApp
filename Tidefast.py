@@ -115,7 +115,7 @@ page_names_to_funcs = {
 # Home Page Function (Recommended Indicators Grid)
 # ---------------------------
 def home():
-    st.markdown("### 推荐指标")
+    # st.markdown("### 推荐指标")
     categories = {
         "技术指标 🔍": ["RSI指标 📈", "KAMA均线 📉", "MACD指标 📊", "布林带指标 📈"],
         "基本面分析 💼": ["财务数据分析 💼", "盈利能力分析 💰", "市盈率分析 📉", "资产负债分析 📊"],
