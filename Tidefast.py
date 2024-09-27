@@ -1,6 +1,7 @@
 import json
 import streamlit as st
 from indicators.bollinger import bollinger_band_analysis
+from indicators.cmf import cmf_analysis
 from indicators.kama import kama_analysis
 from indicators.rsi import rsi_analysis
 # from indicators.financials import financials_analysis
@@ -91,6 +92,7 @@ page_names_to_funcs = {
     "RSI指标 📈": rsi_analysis,
     "KAMA均线 📉": kama_analysis,
     "布林带指标 📈": bollinger_band_analysis,
+    "蔡金资金流量": cmf_analysis,
     "财务数据分析 💼": None,  # Replace with actual functions
     "盈利能力分析 💰": None,
     "股票价格预测 🤖": None,

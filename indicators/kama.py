@@ -15,7 +15,7 @@ import pytz
 # ---------------------------
 
 def kama_analysis(ticker):
-    st.markdown(f"# 📈 KAMA均线")
+    st.markdown(f"# 📈 KAMA均线 for {ticker.upper()}")
     
     # Sidebar for user inputs specific to KAMA Analysis
     st.sidebar.header("指标参数")
@@ -95,7 +95,7 @@ def kama_analysis(ticker):
     )
     
     # Additional Parameters
-    st.sidebar.header("其他参数 (Additional Parameters)")
+    st.sidebar.header("其他参数")
     
     ema_short_window = st.sidebar.number_input(
         "EMA 短期窗口 (EMA Short Window)", 
@@ -267,7 +267,7 @@ def kama_analysis(ticker):
                 go.Scatter(
                     x=df['date'], 
                     y=df['KAMA'], 
-                    line=dict(color='black', width=3),  # Increased width from 1 to 3
+                    line=dict(color='orange', width=3),  # Increased width from 1 to 3
                     name='KAMA'
                 ), 
                 row=1, col=1

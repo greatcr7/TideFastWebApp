@@ -12,7 +12,7 @@ import pytz
 # ---------------------------
 
 def bollinger_band_analysis(ticker):
-    st.markdown(f"# 📈 布林带 (Bollinger Bands)")
+    st.markdown(f"# 📈 布林带 (Bollinger Bands) for {ticker.upper()}")
     
     # Sidebar for user inputs specific to Bollinger Bands Analysis
     st.sidebar.header("指标参数")

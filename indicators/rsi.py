@@ -13,10 +13,10 @@ import pytz
 # ---------------------------
 
 def rsi_analysis(ticker):
-    st.markdown(f"# 📈 RSI")
+    st.markdown(f"# 📈 RSI Analysis for {ticker.upper()}")
 
     # Sidebar for user inputs specific to RSI Analysis
-    st.sidebar.header("指标参数")
+    st.sidebar.header("📊 指标参数 (Indicator Parameters)")
 
     # Function to convert period to start and end dates
     def convert_period_to_dates(period):
@@ -25,7 +25,7 @@ def rsi_analysis(ticker):
 
         # Get current time in Beijing
         end_date = datetime.now(beijing_tz)
-        
+
         # Calculate start date based on the selected period
         if period == "1mo":
             start_date = end_date - timedelta(days=30)
@@ -43,29 +43,90 @@ def rsi_analysis(ticker):
             start_date = end_date - timedelta(days=365*10)
         else:
             start_date = end_date
-        
-        # Convert to 'yyyymmdd' format
+
+        # Convert to 'yyyy-mm-dd' format
         return start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
 
-    # User input function
+    # User input function with additional RSI parameters
     def user_input_features():
-        period = st.sidebar.selectbox("时间跨度", options=["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y"], index=3)
-        # interval = st.sidebar.selectbox("Interval", options=["1d", "1wk", "1mo"], index=1)
-        
+        period = st.sidebar.selectbox(
+            "📅 时间跨度 (Time Period)",
+            options=["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y"],
+            index=3,
+            help="选择分析的时间跨度。"
+        )
+        rsi_window = st.sidebar.number_input(
+            "🔢 RSI窗口 (RSI Window)",
+            min_value=1,
+            max_value=100,
+            value=14,
+            help="RSI计算的窗口期，通常设为14。"
+        )
+        rsi_overbought = st.sidebar.number_input(
+            "📈 RSI 超买水平 (RSI Overbought Level)",
+            min_value=50,
+            max_value=100,
+            value=70,
+            help="RSI指标的超买水平，通常设为70。"
+        )
+        rsi_oversold = st.sidebar.number_input(
+            "📉 RSI 超卖水平 (RSI Oversold Level)",
+            min_value=0,
+            max_value=50,
+            value=30,
+            help="RSI指标的超卖水平，通常设为30。"
+        )
+        ema50_period = st.sidebar.number_input(
+            "📊 EMA50 周期 (EMA50 Period)",
+            min_value=1,
+            max_value=200,
+            value=50,
+            help="计算50期指数移动平均线的周期，通常设为50。"
+        )
+        ema200_period = st.sidebar.number_input(
+            "📊 EMA200 周期 (EMA200 Period)",
+            min_value=1,
+            max_value=500,
+            value=200,
+            help="计算200期指数移动平均线的周期，通常设为200。"
+        )
+        divergence_window = st.sidebar.number_input(
+            "🔍 背离检测窗口 (Divergence Detection Window)",
+            min_value=1,
+            max_value=50,
+            value=5,
+            help="用于检测价格与RSI背离的窗口期，通常设为5。"
+        )
+        peaks_prominence = st.sidebar.number_input(
+            "🔝 峰值显著性 (Peak Prominence)",
+            min_value=0.1,
+            max_value=10.0,
+            value=1.0,
+            step=0.1,
+            help="峰值检测时的显著性要求，通常设为1.0。"
+        )
+
         # Convert period to start and end dates
         start_date, end_date = convert_period_to_dates(period)
-        
-        return start_date, end_date
+
+        return (
+            start_date, end_date, rsi_window, rsi_overbought,
+            rsi_oversold, ema50_period, ema200_period,
+            divergence_window, peaks_prominence
+        )
 
     # Getting user input
-    start_date, end_date = user_input_features()
-
+    (
+        start_date, end_date, rsi_window, rsi_overbought,
+        rsi_oversold, ema50_period, ema200_period,
+        divergence_window, peaks_prominence
+    ) = user_input_features()
 
     # Step 1: Fetch Historical Data using custom get_stock_prices function
     df = get_stock_prices(ticker, start_date, end_date)
 
     if df is None or df.empty:
-        st.error("No data fetched. Please check the ticker symbol and try again.")
+        st.error("❌ 未获取到数据。请检查股票代码并重试。")
         st.stop()
 
     # Step 2: Calculate Relative Strength Index (RSI)
@@ -77,10 +138,10 @@ def rsi_analysis(ticker):
         df['RSI'] = rsi_indicator.rsi()
         return df
 
-    df = calculate_rsi(df, window=14)
+    df = calculate_rsi(df, window=rsi_window)
 
     # Step 3: Identify Price Divergence
-    def identify_divergence(df, window=5, rsi_col='RSI', price_col='close'):
+    def identify_divergence(df, window=5, prominence=1.0, rsi_col='RSI', price_col='close'):
         """
         Identify bullish and bearish divergences between price and RSI.
         """
@@ -88,12 +149,12 @@ def rsi_analysis(ticker):
         bearish_divergences = []
 
         # Find peaks and troughs in price
-        price_peaks, _ = find_peaks(df[price_col], distance=window, prominence=1)
-        price_troughs, _ = find_peaks(-df[price_col], distance=window, prominence=1)
+        price_peaks, _ = find_peaks(df[price_col], distance=window, prominence=prominence)
+        price_troughs, _ = find_peaks(-df[price_col], distance=window, prominence=prominence)
 
         # Find peaks and troughs in RSI
-        rsi_peaks, _ = find_peaks(df[rsi_col], distance=window, prominence=1)
-        rsi_troughs, _ = find_peaks(-df[rsi_col], distance=window, prominence=1)
+        rsi_peaks, _ = find_peaks(df[rsi_col], distance=window, prominence=prominence)
+        rsi_troughs, _ = find_peaks(-df[rsi_col], distance=window, prominence=prominence)
 
         # Bullish Divergence: Price makes lower low, RSI makes higher low
         for i in range(1, len(price_troughs)):
@@ -137,16 +198,18 @@ def rsi_analysis(ticker):
 
         return bullish_divergences, bearish_divergences
 
-    bullish_divergences, bearish_divergences = identify_divergence(df)
+    bullish_divergences, bearish_divergences = identify_divergence(
+        df, window=divergence_window, prominence=peaks_prominence
+    )
 
     # Step 4: Identify Confluence with Exponential Moving Averages (EMA)
-    def find_confluence(df, rsi_threshold=50):
+    def find_confluence(df, ema50_period=50, ema200_period=200, rsi_threshold=50):
         """
         Identify if RSI aligns with other moving averages.
         """
         # Calculate EMAs
-        df['EMA50'] = df['close'].ewm(span=50, adjust=False).mean()
-        df['EMA200'] = df['close'].ewm(span=200, adjust=False).mean()
+        df['EMA50'] = df['close'].ewm(span=ema50_period, adjust=False).mean()
+        df['EMA200'] = df['close'].ewm(span=ema200_period, adjust=False).mean()
 
         latest_rsi = df['RSI'].iloc[-1]
         latest_ema50 = df['EMA50'].iloc[-1]
@@ -171,10 +234,10 @@ def rsi_analysis(ticker):
 
         return confluence_levels, df
 
-    confluences, df = find_confluence(df, rsi_threshold=50)
+    confluences, df = find_confluence(df, ema50_period=ema50_period, ema200_period=ema200_period)
 
     # Step 5: Determine Market Trend Based on RSI and EMAs
-    def determine_trend(df, confluences):
+    def determine_trend(df, confluences, rsi_threshold=50):
         """
         Determine the current market trend based on RSI and EMAs.
         """
@@ -183,9 +246,9 @@ def rsi_analysis(ticker):
         latest_ema200 = df['EMA200'].iloc[-1]
         latest_price = df['close'].iloc[-1]
 
-        if latest_rsi > 50 and latest_price > latest_ema50 and latest_price > latest_ema200:
+        if latest_rsi > rsi_threshold and latest_price > latest_ema50 and latest_price > latest_ema200:
             trend = "上升趋势 (Uptrend)"
-        elif latest_rsi < 50 and latest_price < latest_ema50 and latest_price < latest_ema200:
+        elif latest_rsi < rsi_threshold and latest_price < latest_ema50 and latest_price < latest_ema200:
             trend = "下降趋势 (Downtrend)"
         else:
             trend = "震荡区间 (Sideways)"
@@ -195,94 +258,156 @@ def rsi_analysis(ticker):
     trend, current_price = determine_trend(df, confluences)
 
     # Step 6: Plot Using Plotly
-    def plot_rsi(df, bullish_divergences, bearish_divergences, confluences, ticker):
+    def plot_rsi(df, bullish_divergences, bearish_divergences, confluences, ticker,
+                rsi_overbought=70, rsi_oversold=30, ema50_period=50, ema200_period=200):
         """
         Plot the RSI along with price data, EMAs, and divergences using Plotly.
         """
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
-                            vertical_spacing=0.05, subplot_titles=(f'{ticker}的股价和价格均线', '相对强弱指数 (RSI)'),
-                            row_width=[0.2, 0.7])
+        fig = make_subplots(
+            rows=2, cols=1, shared_xaxes=True,
+            vertical_spacing=0.05,
+            subplot_titles=(f'{ticker.upper()} 的股价和价格均线 (Price and EMAs)', '相对强弱指数 (RSI)'),
+            row_width=[0.2, 0.7]
+        )
 
         # Candlestick for Price
-        fig.add_trace(go.Candlestick(x=df['date'],
-                                     open=df['open'],
-                                     high=df['high'],
-                                     low=df['low'],
-                                     close=df['close'],
-                                     name='Price'), row=1, col=1)
+        fig.add_trace(
+            go.Candlestick(
+                x=df['date'],
+                open=df['open'],
+                high=df['high'],
+                low=df['low'],
+                close=df['close'],
+                name='Price'
+            ),
+            row=1, col=1
+        )
 
         # EMAs
-        fig.add_trace(go.Scatter(x=df['date'], y=df['EMA50'], line=dict(color='blue', width=1), name='EMA50'), row=1, col=1)
-        fig.add_trace(go.Scatter(x=df['date'], y=df['EMA200'], line=dict(color='purple', width=1), name='EMA200'), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=df['date'], y=df['EMA50'],
+                line=dict(color='blue', width=1),
+                name=f'EMA{ema50_period}'
+            ),
+            row=1, col=1
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=df['date'], y=df['EMA200'],
+                line=dict(color='purple', width=1),
+                name=f'EMA{ema200_period}'
+            ),
+            row=1, col=1
+        )
 
         # RSI
-        fig.add_trace(go.Scatter(x=df['date'], y=df['RSI'], line=dict(color='orange', width=1), name='RSI'), row=2, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=df['date'], y=df['RSI'],
+                line=dict(color='orange', width=1),
+                name='RSI'
+            ),
+            row=2, col=1
+        )
 
         # Overbought and Oversold lines
-        fig.add_hline(y=70, line=dict(color='red', dash='dash'), row=2, col=1)
-        fig.add_hline(y=30, line=dict(color='green', dash='dash'), row=2, col=1)
-        fig.add_hline(y=50, line=dict(color='gray', dash='dash'), row=2, col=1)
+        fig.add_hline(
+            y=rsi_overbought, line=dict(color='red', dash='dash'),
+            row=2, col=1
+        )
+        fig.add_hline(
+            y=rsi_oversold, line=dict(color='green', dash='dash'),
+            row=2, col=1
+        )
+        fig.add_hline(
+            y=50, line=dict(color='gray', dash='dash'),
+            row=2, col=1
+        )
 
         # Highlight Bullish Divergences
         for div in bullish_divergences:
-            fig.add_annotation(x=div['Date'], y=div['Price'],
-                               text="Bullish Div.",
-                               showarrow=True,
-                               arrowhead=1,
-                               ax=0, ay=-40,
-                               arrowcolor='green',
-                               row=1, col=1)
-            fig.add_annotation(x=div['Date'], y=div['RSI'],
-                               text="Bullish Div.",
-                               showarrow=True,
-                               arrowhead=1,
-                               ax=0, ay=-40,
-                               arrowcolor='green',
-                               row=2, col=1)
+            fig.add_annotation(
+                x=div['Date'], y=div['Price'],
+                text="Bullish Div.",
+                showarrow=True,
+                arrowhead=1,
+                ax=0, ay=-40,
+                arrowcolor='green',
+                row=1, col=1
+            )
+            fig.add_annotation(
+                x=div['Date'], y=div['RSI'],
+                text="Bullish Div.",
+                showarrow=True,
+                arrowhead=1,
+                ax=0, ay=-40,
+                arrowcolor='green',
+                row=2, col=1
+            )
 
         # Highlight Bearish Divergences
         for div in bearish_divergences:
-            fig.add_annotation(x=div['Date'], y=div['Price'],
-                               text="Bearish Div.",
-                               showarrow=True,
-                               arrowhead=1,
-                               ax=0, ay=40,
-                               arrowcolor='red',
-                               row=1, col=1)
-            fig.add_annotation(x=div['Date'], y=div['RSI'],
-                               text="Bearish Div.",
-                               showarrow=True,
-                               arrowhead=1,
-                               ax=0, ay=40,
-                               arrowcolor='red',
-                               row=2, col=1)
+            fig.add_annotation(
+                x=div['Date'], y=div['Price'],
+                text="Bearish Div.",
+                showarrow=True,
+                arrowhead=1,
+                ax=0, ay=40,
+                arrowcolor='red',
+                row=1, col=1
+            )
+            fig.add_annotation(
+                x=div['Date'], y=div['RSI'],
+                text="Bearish Div.",
+                showarrow=True,
+                arrowhead=1,
+                ax=0, ay=40,
+                arrowcolor='red',
+                row=2, col=1
+            )
 
         # Highlight Confluence Zones
         for key, value in confluences.items():
             if key == 'Bullish Confluence':
                 color = 'green'
+                y_position = rsi_overbought
             elif key == 'Bearish Confluence':
                 color = 'red'
+                y_position = rsi_oversold
             else:
                 color = 'yellow'
-            fig.add_hline(y=50, line=dict(color=color, dash='dot'), row=2, col=1)
+                y_position = 50
+            fig.add_hline(
+                y=y_position, line=dict(color=color, dash='dot'),
+                row=2, col=1
+            )
 
-        fig.update_layout(title=f'相对强弱指数 (RSI)',
-                          yaxis_title='Price',
-                          xaxis_title='',
-                          template='plotly_dark',
-                          showlegend=True,
-                          height=800)
+        fig.update_layout(
+            title=f'相对强弱指数 (RSI) 分析 for {ticker.upper()}',
+            yaxis_title='Price',
+            xaxis_title='',
+            template='plotly_dark',
+            showlegend=True,
+            height=800
+        )
 
         fig.update_xaxes(rangeslider_visible=False)
 
         return fig
 
-    fig = plot_rsi(df, bullish_divergences, bearish_divergences, confluences, ticker)
+    fig = plot_rsi(
+        df, bullish_divergences, bearish_divergences, confluences, ticker,
+        rsi_overbought=rsi_overbought, rsi_oversold=rsi_oversold,
+        ema50_period=ema50_period, ema200_period=ema200_period
+    )
     st.plotly_chart(fig, use_container_width=True)
 
     # Step 7: Detailed Actionable Interpretation in Both English and Chinese
-    def detailed_interpretation(bullish_divergences, bearish_divergences, confluences, current_price, trend):
+    def detailed_interpretation(
+        bullish_divergences, bearish_divergences, confluences,
+        current_price, trend, rsi_overbought, rsi_oversold
+    ):
         """
         Provide a detailed, actionable interpretation based on RSI and divergences in both English and Chinese.
         """
@@ -302,11 +427,23 @@ def rsi_analysis(ticker):
             interpretation_cn += "###### 检测到的共振区：\n"
             for key, indicators in confluences.items():
                 if key == 'Bullish Confluence':
-                    interpretation_en += f"- **Bullish Confluence**: RSI is above 50 ({indicators['RSI']:.2f}), and the price is above both EMA50 ({indicators['EMA50']:.2f}) and EMA200 ({indicators['EMA200']:.2f}).\n"
-                    interpretation_cn += f"- **看涨共振区**：RSI 高于50 ({indicators['RSI']:.2f})，价格高于 EMA50 ({indicators['EMA50']:.2f}) 和 EMA200 ({indicators['EMA200']:.2f})。\n"
+                    interpretation_en += (
+                        f"- **Bullish Confluence**: RSI is above {rsi_overbought} ({indicators['RSI']:.2f}), "
+                        f"and the price is above both EMA{ema50_period} ({indicators['EMA50']:.2f}) and EMA{ema200_period} ({indicators['EMA200']:.2f}).\n"
+                    )
+                    interpretation_cn += (
+                        f"- **看涨共振区**：RSI 高于 {rsi_overbought} ({indicators['RSI']:.2f})，"
+                        f"价格高于 EMA{ema50_period} ({indicators['EMA50']:.2f}) 和 EMA{ema200_period} ({indicators['EMA200']:.2f})。\n"
+                    )
                 elif key == 'Bearish Confluence':
-                    interpretation_en += f"- **Bearish Confluence**: RSI is below 50 ({indicators['RSI']:.2f}), and the price is below both EMA50 ({indicators['EMA50']:.2f}) and EMA200 ({indicators['EMA200']:.2f}).\n"
-                    interpretation_cn += f"- **看跌共振区**：RSI 低于50 ({indicators['RSI']:.2f})，价格低于 EMA50 ({indicators['EMA50']:.2f}) 和 EMA200 ({indicators['EMA200']:.2f})。\n"
+                    interpretation_en += (
+                        f"- **Bearish Confluence**: RSI is below {rsi_overbought} ({indicators['RSI']:.2f}), "
+                        f"and the price is below both EMA{ema50_period} ({indicators['EMA50']:.2f}) and EMA{ema200_period} ({indicators['EMA200']:.2f}).\n"
+                    )
+                    interpretation_cn += (
+                        f"- **看跌共振区**：RSI 低于 {rsi_overbought} ({indicators['RSI']:.2f})，"
+                        f"价格低于 EMA{ema50_period} ({indicators['EMA50']:.2f}) 和 EMA{ema200_period} ({indicators['EMA200']:.2f})。\n"
+                    )
             interpretation_en += "\n"
             interpretation_cn += "\n"
         else:
@@ -316,15 +453,15 @@ def rsi_analysis(ticker):
         # 3. Price Position Analysis
         interpretation_en += "###### Price Position Relative to RSI and EMAs:\n"
         interpretation_cn += "###### 当前价格相对于 RSI 和 EMA 的位置：\n"
-        if trend == "Uptrend":
-            interpretation_en += "- The current price is **above** EMA50 and EMA200, with RSI above 50, indicating strong buying pressure.\n"
-            interpretation_cn += "- 当前价格 **高于** EMA50 和 EMA200，且 RSI 高于50，表明强劲的买入压力。\n"
-        elif trend == "Downtrend":
-            interpretation_en += "- The current price is **below** EMA50 and EMA200, with RSI below 50, indicating strong selling pressure.\n"
-            interpretation_cn += "- 当前价格 **低于** EMA50 和 EMA200，且 RSI 低于50，表明强劲的卖出压力。\n"
+        if trend == "上升趋势 (Uptrend)":
+            interpretation_en += f"- The current price is **above** EMA{ema50_period} and EMA{ema200_period}, with RSI above {rsi_overbought}, indicating strong buying pressure.\n"
+            interpretation_cn += f"- 当前价格 **高于** EMA{ema50_period} 和 EMA{ema200_period}，且 RSI 高于 {rsi_overbought}，表明强劲的买入压力。\n"
+        elif trend == "下降趋势 (Downtrend)":
+            interpretation_en += f"- The current price is **below** EMA{ema50_period} and EMA{ema200_period}, with RSI below {rsi_oversold}, indicating strong selling pressure.\n"
+            interpretation_cn += f"- 当前价格 **低于** EMA{ema50_period} 和 EMA{ema200_period}，且 RSI 低于 {rsi_oversold}，表明强劲的卖出压力。\n"
         else:
-            interpretation_en += "- The current price is **between** EMA50 and EMA200, with RSI around 50, indicating a sideways or consolidating market.\n"
-            interpretation_cn += "- 当前价格 **位于** EMA50 和 EMA200 之间，且 RSI 约为50，表明横盘或整合市场。\n"
+            interpretation_en += f"- The current price is **between** EMA{ema50_period} and EMA{ema200_period}, with RSI around 50, indicating a sideways or consolidating market.\n"
+            interpretation_cn += f"- 当前价格 **位于** EMA{ema50_period} 和 EMA{ema200_period} 之间，且 RSI 约为50，表明横盘或整合市场。\n"
         interpretation_en += "\n"
         interpretation_cn += "\n"
 
@@ -334,13 +471,23 @@ def rsi_analysis(ticker):
 
         # Bullish Confluence
         if 'Bullish Confluence' in confluences:
-            interpretation_en += "- **Buying Opportunity**: Consider buying when RSI remains above 50 and the price is above EMA50 and EMA200, confirming strong bullish momentum.\n"
-            interpretation_cn += "- **买入机会**：当 RSI 保持在50以上，且价格高于 EMA50 和 EMA200，确认强劲的看涨动能时，考虑买入。\n"
+            interpretation_en += (
+                f"- **Buying Opportunity**: Consider buying when RSI remains above {rsi_overbought} "
+                f"and the price is above EMA{ema50_period} and EMA{ema200_period}, confirming strong bullish momentum.\n"
+            )
+            interpretation_cn += (
+                f"- **买入机会**：当 RSI 保持在 {rsi_overbought} 以上，且价格高于 EMA{ema50_period} 和 EMA{ema200_period}，确认强劲的看涨动能时，考虑买入。\n"
+            )
 
         # Bearish Confluence
         if 'Bearish Confluence' in confluences:
-            interpretation_en += "- **Selling Opportunity**: Consider selling when RSI remains below 50 and the price is below EMA50 and EMA200, confirming strong bearish momentum.\n"
-            interpretation_cn += "- **卖出机会**：当 RSI 保持在50以下，且价格低于 EMA50 和 EMA200，确认强劲的卖出动能时，考虑卖出。\n"
+            interpretation_en += (
+                f"- **Selling Opportunity**: Consider selling when RSI remains below {rsi_oversold} "
+                f"and the price is below EMA{ema50_period} and EMA{ema200_period}, confirming strong bearish momentum.\n"
+            )
+            interpretation_cn += (
+                f"- **卖出机会**：当 RSI 保持在 {rsi_oversold} 以下，且价格低于 EMA{ema50_period} 和 EMA{ema200_period}，确认强劲的卖出动能时，考虑卖出。\n"
+            )
 
         # Bullish Divergence
         if bullish_divergences:
@@ -360,16 +507,24 @@ def rsi_analysis(ticker):
         # Breakout Scenarios
         interpretation_en += "\n###### Breakout Scenarios:\n"
         interpretation_cn += "\n###### 突破情景：\n"
-        interpretation_en += "- **Bullish Breakout**: If the price breaks above EMA200 with increasing RSI and volume, consider **entering a long position**.\n"
-        interpretation_cn += "- **看涨突破**：如果价格在 RSI 和成交量增加的情况下突破 EMA200，考虑 **建立多头仓位**。\n"
-        interpretation_en += "- **Bearish Breakout**: If the price breaks below EMA200 with decreasing RSI and volume, consider **entering a short position**.\n"
-        interpretation_cn += "- **看跌突破**：如果价格在 RSI 和成交量减少的情况下突破 EMA200，考虑 **建立空头仓位**。\n"
+        interpretation_en += (
+            "- **Bullish Breakout**: If the price breaks above EMA{ema200_period} with increasing RSI and volume, consider **entering a long position**.\n"
+        )
+        interpretation_cn += (
+            f"- **看涨突破**：如果价格在 RSI 和成交量增加的情况下突破 EMA{ema200_period}，考虑 **建立多头仓位**。\n"
+        )
+        interpretation_en += (
+            f"- **Bearish Breakout**: If the price breaks below EMA{ema200_period} with decreasing RSI and volume, consider **entering a short position**.\n"
+        )
+        interpretation_cn += (
+            f"- **看跌突破**：如果价格在 RSI 和成交量减少的情况下突破 EMA{ema200_period}，考虑 **建立空头仓位**。\n"
+        )
 
         # Risk Management
         interpretation_en += "\n###### Risk Management:\n"
         interpretation_cn += "\n###### 风险管理：\n"
         interpretation_en += "- **Stop-Loss**: Place stop-loss orders just beyond EMA50 or EMA200 to manage risk.\n"
-        interpretation_cn += "- **止损**：在 EMA50 或 EMA200 之外稍微放置止损订单以管理风险。\n"
+        interpretation_cn += "- **止损**：在 EMA{ema50_period} 或 EMA{ema200_period} 之外稍微放置止损订单以管理风险。\n"
         interpretation_en += "- **Take-Profit**: Set target levels based on recent support/resistance levels or use a trailing stop to lock in profits.\n"
         interpretation_cn += "- **止盈**：根据近期的支撑/阻力位设置目标水平或使用移动止盈以锁定利润。\n"
 
@@ -386,14 +541,15 @@ def rsi_analysis(ticker):
         return interpretation_en, interpretation_cn
 
     interpret_en, interpret_cn = detailed_interpretation(
-        bullish_divergences, bearish_divergences, confluences, current_price, trend
+        bullish_divergences, bearish_divergences, confluences,
+        current_price, trend, rsi_overbought, rsi_oversold
     )
 
     # Display Interpretations
-    st.markdown("##### 📄 指标解读")
+    st.markdown("##### 📄 指标解读 (Indicator Interpretation)")
 
     # Tabs for English and Chinese
-    tab1, tab2 = st.tabs(["中文", "English"])
+    tab1, tab2 = st.tabs(["🇨🇳 中文", "🇺🇸 English"])
 
     with tab1:
         st.markdown(interpret_cn)
@@ -402,5 +558,5 @@ def rsi_analysis(ticker):
         st.markdown(interpret_en)
 
     # Optional: Display Data Table
-    with st.expander("📊 查看原始数据"):
+    with st.expander("📊 查看原始数据 (View Raw Data)"):
         st.dataframe(df)
