@@ -1,3 +1,4 @@
+akshare==1.14.87
 altair==5.4.1
 attrs==24.2.0
 beautifulsoup4==4.12.3
@@ -7,21 +8,26 @@ cachetools==5.5.0
 certifi==2024.8.30
 charset-normalizer==3.3.2
 click==8.1.7
+decorator==5.1.1
+et-xmlfile==1.1.0
 frozendict==2.4.4
 gitdb==4.0.11
 GitPython==3.1.43
 html5lib==1.1
 idna==3.10
 Jinja2==3.1.4
+jsonpath==0.82.2
 jsonschema==4.23.0
 jsonschema-specifications==2023.12.1
 lxml==5.3.0
 markdown-it-py==3.0.0
 MarkupSafe==2.1.5
 mdurl==0.1.2
+mini-racer==0.12.4
 multitasking==0.0.11
 narwhals==1.8.3
 numpy==2.1.1
+openpyxl==3.1.5
 packaging==24.1
 pandas==2.2.3
 peewee==3.17.6
@@ -46,6 +52,7 @@ smmap==5.0.1
 soupsieve==2.6
 streamlit==1.38.0
 ta==0.11.0
+tabulate==0.9.0
 tenacity==8.5.0
 toml==0.10.2
 tornado==6.4.1
@@ -56,4 +63,5 @@ tzdata==2024.2
 urllib3==2.2.3
 webencodings==0.5.1
 websocket-client==1.8.0
+xlrd==2.0.1
 yfinance==0.2.43

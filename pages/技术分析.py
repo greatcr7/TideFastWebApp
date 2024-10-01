@@ -1,17 +1,20 @@
 import json
 import streamlit as st
+from indicators.emd_macd import emd_macd_analysis
 from indicators.fib_retracement import fibonacci_retracement_analysis
 from indicators.alma import alma_analysis
 from indicators.bollinger import bollinger_band_analysis
 from indicators.choppiness import choppiness_analysis
 from indicators.cks import cks_analysis
 from indicators.cmf import cmf_analysis
+from indicators.hurst import hurst_analysis
 from indicators.ichimoku import ichimoku_analysis
 from indicators.kama import kama_analysis
 from indicators.kc import keltner_channel_analysis
 from indicators.parabolic_sar import parabolic_sar_analysis
 from indicators.rsi import rsi_analysis
 from indicators.stc import stc_analysis
+from indicators.supertrend import supertrend_analysis
 # from indicators.financials import financials_analysis
 # from indicators.ml_predictions import ml_predictions_analysis
 
@@ -97,8 +100,11 @@ stock_display_names = list(stock_display_to_ticker.keys())
 # Indicator Mapping
 # ---------------------------
 page_names_to_funcs = {
+    "EMD-MACD均线 💰": emd_macd_analysis,
     "RSI指标 📈": rsi_analysis,
     "KAMA均线 💼": kama_analysis,
+    "Hurst指标 📊": hurst_analysis,
+    "超级趋势 📈": supertrend_analysis,
     "斐波那契回调线 💰": fibonacci_retracement_analysis,
     "布林带指标 📊": bollinger_band_analysis,
     "波动指数 💼": choppiness_analysis,
@@ -131,21 +137,7 @@ def home():
     #             with col:
     #                 st.button(indicator, key=indicator, on_click=set_selected_indicator_dropdown)
 
-    # Add some spacing before disclaimers
-    st.markdown("\n" * 5)
 
-    st.markdown(
-        """
-        ##### Legal Disclaimer
-
-        This platform is intended for informational purposes only and does not constitute investment advice. Always conduct your own research or consult with a qualified financial advisor before making any investment decisions.
-
-        ---
-        ##### 法律免责声明
-
-        本平台仅供参考，並不构成投资建议。请在做出任何投资决定之前，务必自行研究或咨询专业的金融顾问。
-        """
-    )
 
 # ---------------------------
 # Main App Execution
