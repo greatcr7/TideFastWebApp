@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime
 import plotly.express as px
 import json
+import plotly.graph_objs as go
 
 @st.cache_data
 def fetch_stock_board_change_data() -> pd.DataFrame:
@@ -42,7 +43,7 @@ def parse_board_specific_changes(row):
         return formatted_changes
     except Exception:
         return "无法解析数据"
-
+    
 
 def display_stock_board_change():
     """
@@ -170,6 +171,7 @@ def display_stock_board_change():
     # 显示图表
     st.plotly_chart(fig_net_flow, use_container_width=True)    
 
+    plot_change_percentage_vs_inflow(df)
 
     st.markdown("### 板块异动总次数前20")
     # 选择板块异动总次数前20的板块
