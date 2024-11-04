@@ -22,7 +22,7 @@ from indicators.supertrend import supertrend_analysis
 # Page Configuration
 # ---------------------------
 st.set_page_config(
-    page_title="历澜投资",
+    page_title="技术分析 - 历澜投资",
     layout="wide",
     page_icon="images/logo.png"
 )
@@ -143,6 +143,8 @@ def home():
 # Main App Execution
 # ---------------------------
 def main():
+    st.title("技术分析 📈")
+
     # ---------------------------
     # Selection Bar (Fixed at Top)
     # ---------------------------

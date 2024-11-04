@@ -11,9 +11,9 @@ from data.stock import get_stock_prices
 # Page Configuration
 # ---------------------------
 st.set_page_config(
-    page_title="个股",
+    page_title="个股行情 - 历澜投资",
     layout="wide",
-    page_icon="📈"
+    page_icon="images/logo.png"
 )
 
 # ---------------------------
@@ -188,29 +188,7 @@ def display_market_quotes(stock_symbol, df):
         st.plotly_chart(fig_candlestick, use_container_width=True)
     else:
         st.warning("没有可用的历史价格数据来绘制K线图。")
-    
-    # Create metrics DataFrame
-    metrics_df = pd.DataFrame(list(metrics.items()), columns=['指标', '数值'])
 
-    # Display key metrics in columns
-    st.markdown("#### 关键指标")
-    num_cols = 4
-    metric_cols = st.columns(num_cols)
-    for idx, (key, value) in enumerate(metrics.items()):
-        col = metric_cols[idx % num_cols]
-        with col:
-            # Format numbers with commas and appropriate decimal places
-            try:
-                numeric_value = float(value)
-                if '幅' in key or '涨跌' in key:
-                    display_value = f"{numeric_value:.3}%"
-                elif '金额' in key:
-                    display_value = f"¥{int(numeric_value):,}"
-                else:
-                    display_value = f"{numeric_value:,.2f}"
-            except ValueError:
-                display_value = value
-            st.metric(label=key, value=display_value)
     
     st.markdown("---")
 
@@ -389,11 +367,33 @@ def display_market_quotes(stock_symbol, df):
     }, inplace=True)
     
     # Display the formatted DataFrame
-    st.dataframe(display_df, width=800, hide_index=True)
+    st.dataframe(display_df, width=800, hide_index=True, use_container_width=True)
+
+    # Create metrics DataFrame
+    metrics_df = pd.DataFrame(list(metrics.items()), columns=['指标', '数值'])
+
+    # Display key metrics in columns
+    st.markdown("#### 关键指标")
+    num_cols = 4
+    metric_cols = st.columns(num_cols)
+    for idx, (key, value) in enumerate(metrics.items()):
+        col = metric_cols[idx % num_cols]
+        with col:
+            # Format numbers with commas and appropriate decimal places
+            try:
+                numeric_value = float(value)
+                if '幅' in key:
+                    display_value = f"{numeric_value:.3}%"
+                elif '金额' in key:
+                    display_value = f"¥{int(numeric_value):,}"
+                else:
+                    display_value = f"{numeric_value:,.2f}"
+            except ValueError:
+                display_value = value
+            st.metric(label=key, value=display_value)
 
 def main():
-    st.title("个股 📊")
-    st.markdown("请选择一只中国A股市场的股票以查看其实时的买卖盘数据。")
+    st.title("个股行情 📊")
 
     # ---------------------------
     # Selection Bar (Fixed at Top)
@@ -417,13 +417,13 @@ def main():
             # Define popular stocks (subset of stocks)
     popular_stocks = [
         {"cname": "中国中免", "ticker": "601888.SH", "market": "china"},
-        {"cname": "华泰证券", "ticker": "601688.SH", "market": "china"},
+        {"cname": "恒生电子", "ticker": "600570.SH", "market": "china"},
         {"cname": "甘李药业", "ticker": "603087.SH", "market": "china"},
-        {"cname": "伊利股份", "ticker": "600887.SH", "market": "china"},
+        {"cname": "长电科技", "ticker": "600584.SH", "market": "china"},
         {"cname": "达仁堂", "ticker": "600329.SH", "market": "china"},
         {"cname": "以岭药业", "ticker": "002603.SZ", "market": "china"},
-        {"cname": "贵州茅台", "ticker": "600519.SH", "market": "china"},
-        {"cname": "中信证券", "ticker": "600030.SH", "market": "china"}
+        {"cname": "泸州老窖", "ticker": "000568.SZ", "market": "china"},
+        {"cname": "晶合集成", "ticker": "688249.SH", "market": "china"}
     ]
     
     # Popular Stocks Buttons
@@ -435,7 +435,8 @@ def main():
             if st.button(stock_display, key=f"button_{stock['ticker']}"):
                 st.session_state.selected_stock = stock_display_to_ticker[stock_display]
     
-    st.success(f"已选择股票: {st.session_state.selected_stock}")
+    if st.session_state.selected_stock != None:
+        st.success(f"已选择股票: {st.session_state.selected_stock}")
 
     # ---------------------------
     # Display Market Quotes Automatically
@@ -444,8 +445,6 @@ def main():
         with st.spinner('正在获取行情报价数据...'):
             df_quotes = fetch_market_quotes(st.session_state.selected_stock)
         display_market_quotes(st.session_state.selected_stock, df_quotes)
-    else:
-        st.info("请从左侧选择一只股票以查看其行情报价。")
 
 if __name__ == "__main__":
     main()

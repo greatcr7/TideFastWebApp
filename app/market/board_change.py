@@ -50,9 +50,9 @@ def display_stock_board_change():
     在 Streamlit 中获取、过滤并展示板块异动详情数据。
     包括数据表展示、数据统计、可视化图表以及数据导出功能。
     """
-    st.title("板块异动详情可视化")
+    st.title("概念板块异动")
     st.markdown("""
-    您可以查看各板块的涨跌幅、主力净流入、异动次数等信息，并通过可视化图表进行深入分析。
+    您可以在左边的输入栏选择想查看的板块。
     """)
     
     # 侧边栏 - 信息展示
@@ -86,11 +86,7 @@ def display_stock_board_change():
         st.sidebar.info(f"过滤后找到 {len(df)} 个板块的异动记录。")
     
     st.success(f"找到 {len(df)} 个板块的异动记录。")
-    
-    # 显示数据表
-    st.markdown("### 板块异动数据表")
-    st.dataframe(df[['板块名称', '涨跌幅', '主力净流入', '板块异动总次数']].reset_index(drop=True))
-    
+        
     # 数据统计
     st.markdown("### 数据统计")
     col1, col2, col3 = st.columns(3)
@@ -171,8 +167,6 @@ def display_stock_board_change():
     # 显示图表
     st.plotly_chart(fig_net_flow, use_container_width=True)    
 
-    plot_change_percentage_vs_inflow(df)
-
     st.markdown("### 板块异动总次数前20")
     # 选择板块异动总次数前20的板块
     top20_change_times = df.nlargest(20, '板块异动总次数').copy()
@@ -205,3 +199,7 @@ def display_stock_board_change():
 
     # 显示图表
     st.plotly_chart(fig_change_times, use_container_width=True)
+
+    # 显示数据表
+    st.markdown("### 板块异动数据表")
+    st.dataframe(df[['板块名称', '涨跌幅', '主力净流入', '板块异动总次数']].reset_index(drop=True), use_container_width=True)

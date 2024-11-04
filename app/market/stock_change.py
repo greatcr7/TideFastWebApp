@@ -39,9 +39,9 @@ def display_stock_changes():
     在 Streamlit 中获取、过滤并展示盘口异动数据。
     包括 symbol 选择、数据表展示和相关信息解析。
     """
-    st.title("盘口异动可视化")
+    st.title("股票盘口异动")
     st.markdown("""
-    本页面展示来自东方财富行情中心的盘口异动数据。您可以通过侧边栏选择不同的异动类型来查看最新的交易数据。
+    您可以通过侧边栏选择不同的异动类型来查看最新的交易数据。
     """)
     
     # 侧边栏 - Symbol 选择
@@ -92,23 +92,7 @@ def display_stock_changes():
             changes_data['相关信息'] = changes_data['相关信息']
     
     # 显示数据表
-    with st.expander("查看原始数据"):
-        st.dataframe(changes_data)
-    
     st.markdown("### 盘口异动详情")
+    st.dataframe(changes_data, use_container_width=True)
     
-    # 展示每条盘口异动记录
-    for idx, row in changes_data.iterrows():
-        details = f"**时间:** {row['时间']}  \n" \
-                  f"**代码:** {row['代码']}  \n" \
-                  f"**名称:** {row['名称']}  \n" \
-                  f"**板块:** {row['板块']}  \n"
-        if '数量' in row and '价格' in row and '涨跌幅' in row:
-            details += f"**数量:** {row['数量']}  \n" \
-                       f"**价格:** {row['价格']}  \n" \
-                       f"**涨跌幅:** {row['涨跌幅']}"
-        else:
-            details += f"**相关信息:** {row['相关信息']}"
-        
-        with st.expander(f"{row['名称']} ({row['代码']})"):
-            st.markdown(details)
+    
