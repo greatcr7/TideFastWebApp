@@ -129,7 +129,7 @@ def display_stock_board_change():
         margin=dict(l=150, r=20, t=50, b=20)
     )
     # 显示图表
-    st.plotly_chart(fig_change, use_container_width=True)    
+    st.plotly_chart(fig_change, use_container_width=True, config={'displayModeBar': False})    
 
 
     # 可视化: 主力净流入前20
@@ -165,7 +165,7 @@ def display_stock_board_change():
     )
 
     # 显示图表
-    st.plotly_chart(fig_net_flow, use_container_width=True)    
+    st.plotly_chart(fig_net_flow, use_container_width=True, config={'displayModeBar': False})    
 
     st.markdown("### 板块异动总次数前20")
     # 选择板块异动总次数前20的板块
@@ -198,7 +198,7 @@ def display_stock_board_change():
     )
 
     # 显示图表
-    st.plotly_chart(fig_change_times, use_container_width=True)
+    st.plotly_chart(fig_change_times, use_container_width=True, config={'displayModeBar': False})
 
     # 显示数据表
     st.markdown("### 板块异动数据表")

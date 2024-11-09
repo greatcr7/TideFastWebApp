@@ -395,6 +395,13 @@ def display_market_quotes(stock_symbol, df):
 def main():
     st.title("个股行情 📊")
 
+    st.logo(
+        "images/logo.png",
+        link="https://platform.tidefast.com",
+        size="large", 
+        icon_image="images/logo.png",
+    )
+
     # ---------------------------
     # Selection Bar (Fixed at Top)
     # ---------------------------
@@ -427,10 +434,10 @@ def main():
     ]
     
     # Popular Stocks Buttons
-    button_cols = st.columns(8)  # Create a column for each popular stock
+    button_cols = st.columns(4)  # Create a column for each popular stock
 
     for idx, stock in enumerate(popular_stocks):
-        with button_cols[idx]:
+        with button_cols[idx % 4]:
             stock_display = f"{stock['cname']} ({stock['ticker']})"
             if st.button(stock_display, key=f"button_{stock['ticker']}"):
                 st.session_state.selected_stock = stock_display_to_ticker[stock_display]

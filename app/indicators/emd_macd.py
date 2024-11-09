@@ -7,16 +7,25 @@ import numpy as np
 from scipy.signal import savgol_filter
 from data.stock import get_stock_prices  # Ensure this custom module is available
 import pytz
+from itertools import product
 
 # ---------------------------
 # EMD-MACD Analysis Function
 # ---------------------------
 
 def emd_macd_analysis(ticker):
-    st.markdown(f"# 📈 Ehlers’ MACD均线 (EMD-MACD) for {ticker.upper()}")
+    st.markdown(f"# 📈 Ehlers’ MACD均线 (EMD-MACD) - {ticker.upper()}")
+    
+    # # Add a selection box for allowing shorting
+    # allow_shorting = st.sidebar.selectbox(
+    #     "📉 是否允许策略做空",
+    #     options=["不允许", "允许"],
+    #     index=0,
+    #     help="选择是否在策略中允许做空操作。\n\n美股和港股允许做空，A股不鼓励做空。"
+    # )
 
     # Sidebar for user inputs specific to EMD-MACD Analysis
-    st.sidebar.header("📊 指标参数 (Indicator Parameters)")
+    st.sidebar.header("📊 参数设置")
 
     # Function to convert period to start and end dates
     def convert_period_to_dates(period):
@@ -48,39 +57,39 @@ def emd_macd_analysis(ticker):
         return start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
 
     # User input function with additional EMD-MACD parameters
-    def user_input_features():
+    def user_input_features(short=None, long_=None, signal=None, smooth=None):
         period = st.sidebar.selectbox(
-            "📅 时间跨度 (Time Period)",
+            "📅 时间跨度",
             options=["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y"],
             index=3,
             help="选择分析的时间跨度。"
         )
         short_window = st.sidebar.number_input(
-            "🔢 短期EMA窗口 (Short EMA Window)",
+            "🔢 短期EMA窗口",
             min_value=1,
             max_value=100,
-            value=12,
+            value=short if short else 12,
             help="短期EMA的窗口期，通常设为12。"
         )
         long_window = st.sidebar.number_input(
-            "🔢 长期EMA窗口 (Long EMA Window)",
+            "🔢 长期EMA窗口",
             min_value=1,
             max_value=200,
-            value=26,
+            value=long_ if long_ else 26,
             help="长期EMA的窗口期，通常设为26。"
         )
         signal_window = st.sidebar.number_input(
-            "🔢 信号线窗口 (Signal Line Window)",
+            "🔢 信号线窗口",
             min_value=1,
             max_value=100,
-            value=9,
+            value=signal if signal else 9,
             help="信号线的窗口期，通常设为9。"
         )
         smoothing = st.sidebar.number_input(
-            "🔢 平滑参数 (Smoothing Parameter)",
+            "🔢 平滑参数",
             min_value=1,
             max_value=100,
-            value=3,
+            value=smooth if smooth else 3,
             help="用于Savitzky-Golay滤波器的平滑参数，通常设为3。"
         )
 
@@ -98,17 +107,177 @@ def emd_macd_analysis(ticker):
         signal_window, smoothing
     ) = user_input_features()
 
-    # Step 1: Fetch Historical Data using custom get_stock_prices function
-    df = get_stock_prices(ticker, start_date, end_date)
+    # ---------------------------
+    # Parameter Tuning Function
+    # ---------------------------
+    def tune_parameters(df, parameter_grid, initial_investment=10000):
+        """
+        Perform grid search to find the best parameter combination based on Sharpe Ratio.
+        """
+        best_sharpe = -np.inf
+        best_params = {}
+        results = []
 
-    if df is None or df.empty:
-        st.error("❌ 未获取到数据。请检查股票代码并重试。")
-        st.stop()
+        total_combinations = len(parameter_grid['short_window']) * len(parameter_grid['long_window']) * \
+                            len(parameter_grid['signal_window']) * len(parameter_grid['smoothing'])
 
-    # Ensure the 'date' column is in datetime format
-    df['date'] = pd.to_datetime(df['date'])
+        progress_bar = st.progress(0)
+        status_text = st.empty()
 
-    # Step 2: Calculate Ehlers’ Modified MACD (EMD-MACD)
+        combination = 0
+
+        for short, long_, signal, smooth in product(
+            parameter_grid['short_window'],
+            parameter_grid['long_window'],
+            parameter_grid['signal_window'],
+            parameter_grid['smoothing']
+        ):
+            combination += 1
+            status_text.text(f"Tuning parameters: Combination {combination}/{total_combinations}")
+            progress_bar.progress(combination / total_combinations)
+
+            try:
+                # Calculate EMD-MACD with current parameters
+                df_temp = calculate_emd_macd(df.copy(), short, long_, signal, smooth)
+                bullish_cross, bearish_cross = identify_crossovers(df_temp)
+                # Unpack all returned values and extract sharpe_ratio
+                _, _, _, _, sharpe_ratio, _, _, _ = evaluate_performance(df_temp, bullish_cross, bearish_cross, initial_investment)
+            except Exception as e:
+                # Handle any errors during calculation to prevent the tuning process from stopping
+                st.warning(f"Error with parameters (Short: {short}, Long: {long_}, Signal: {signal}, Smooth: {smooth}): {e}")
+                sharpe_ratio = -np.inf  # Assign a poor sharpe ratio for failed combinations
+
+            # Check if current sharpe is better
+            if sharpe_ratio > best_sharpe:
+                best_sharpe = sharpe_ratio
+                best_params = {
+                    'short_window': short,
+                    'long_window': long_,
+                    'signal_window': signal,
+                    'smoothing': smooth
+                }
+
+            # Optional: Store results for further analysis
+            results.append({
+                'short_window': short,
+                'long_window': long_,
+                'signal_window': signal,
+                'smoothing': smooth,
+                'sharpe_ratio': sharpe_ratio
+            })
+
+        progress_bar.empty()
+        status_text.empty()
+        return best_params, pd.DataFrame(results)
+
+    # ---------------------------
+    # Performance Evaluation Helper
+    # ---------------------------
+    def evaluate_performance(df, bullish_crossovers, bearish_crossovers, initial_investment=10000):
+        """
+        Compute performance metrics including Sharpe Ratio.
+        """
+        # Ensure data is sorted chronologically
+        df = df.sort_values(by="date").reset_index(drop=True)
+
+        trades = []
+        bullish_returns = []
+        portfolio_values = [initial_investment]
+        position_open = False
+
+        # 获取 bearish_crossovers 的位置索引列表
+        bearish_indices = bearish_crossovers.index.tolist()
+
+        for bull_idx, bull_row in bullish_crossovers.iterrows():
+            # 如果已经持有头寸，跳过新的买入信号
+            if position_open:
+                print(f"警告: 在索引 {bull_idx} 已经有未平仓头寸，跳过此买入信号。")
+                continue
+
+            # 交易信号的实际位置
+            bull_position = df.index.get_loc(bull_row.name)
+
+            # 买入日期和价格必须为当前信号后的下一个交易日
+            if bull_position + 1 >= len(df):
+                print(f"警告: 在索引 {bull_position} 没有足够的数据来进行买入交易，跳过此信号。")
+                continue
+
+            entry_date = df.loc[bull_position + 1, 'date']
+            entry_price = df.loc[bull_position + 1, 'open']
+
+            # 找到第一个 bearish crossover 出现的位置
+            future_bearish = [idx for idx in bearish_indices if idx > bull_position]
+
+            # 确认 exit_position 在未来数据范围内
+            if not future_bearish:
+                print("警告: 没有找到更多的 bearish crossover，结束交易循环。")
+                break
+
+            exit_position = future_bearish[0]
+
+            # 退出日期和价格必须为 bearish crossover 出现后的下一个交易日
+            if exit_position + 1 >= len(df):
+                print(f"警告: 在索引 {exit_position} 没有足够的数据来进行卖出交易，结束交易循环。")
+                break
+
+            exit_date = df.loc[exit_position + 1, 'date']
+            exit_price = df.loc[exit_position + 1, 'open']
+
+            # 检查退出日期是否在买入日期之后
+            if exit_date <= entry_date:
+                print(f"警告: 卖出日期 {exit_date} 早于或等于买入日期 {entry_date}，跳过不合理的交易。")
+                continue
+
+            bullish_return = (exit_price - entry_price) / entry_price
+            bullish_returns.append(bullish_return)
+            trades.append({
+                "买入日期": entry_date,
+                "买入价格": entry_price,
+                "卖出日期": exit_date,
+                "卖出价格": exit_price,
+                "收益率": f"{bullish_return:.2%}"
+            })
+
+            last_portfolio_value = portfolio_values[-1]
+            portfolio_value = last_portfolio_value * (1 + bullish_return)
+            portfolio_values.append(portfolio_value)
+
+            # 标记头寸已关闭
+            position_open = False
+
+        # 创建 DataFrame 记录交易
+        trades_df = pd.DataFrame(trades)
+
+        avg_bullish_return = np.mean(bullish_returns) if bullish_returns else 0
+        bullish_success_rate = sum([1 for ret in bullish_returns if ret > 0]) / len(bullish_returns) if bullish_returns else 0
+        total_cumulative_return = (portfolio_values[-1] - initial_investment) / initial_investment
+
+        num_years = (df['date'].iloc[-1] - df['date'].iloc[0]).days / 365.25
+        annualized_return = (portfolio_values[-1] / initial_investment) ** (1 / num_years) - 1 if num_years > 0 else 0
+
+        risk_free_rate = 0.03
+        excess_returns = [ret - risk_free_rate / 252 for ret in bullish_returns]
+        sharpe_ratio = (np.mean(excess_returns) / np.std(excess_returns)) * np.sqrt(252) if np.std(excess_returns) != 0 else 0
+
+        portfolio_series = pd.Series(portfolio_values)
+        rolling_max = portfolio_series.cummax()
+        drawdowns = (portfolio_series - rolling_max) / rolling_max
+        max_drawdown = drawdowns.min()
+
+        return (
+            avg_bullish_return,
+            bullish_success_rate,
+            total_cumulative_return,
+            annualized_return,
+            sharpe_ratio,
+            max_drawdown,
+            portfolio_values,
+            trades_df
+        )
+
+    # ---------------------------
+    # EMD-MACD Calculation Function
+    # ---------------------------
     def calculate_emd_macd(df, short_window=12, long_window=26, signal_window=9, smoothing=3):
         """
         Calculate Ehlers’ Modified MACD using zero-lag EMA and Savitzky-Golay filter for smoothing.
@@ -127,7 +296,16 @@ def emd_macd_analysis(ticker):
         df['MACD'] = df['EMA_short'] - df['EMA_long']
 
         # Apply Savitzky-Golay filter for smoothing the MACD line
-        df['MACD_smooth'] = savgol_filter(df['MACD'].fillna(0), window_length=smoothing*2+1 if smoothing*2+1 < len(df) else len(df)//2*2+1, polyorder=2)
+        # 使用右对齐的移动窗口滤波
+        def right_aligned_smoothing(series, window):
+            return series.rolling(window=window, min_periods=1).mean()
+        
+        window_length = smoothing*2+1
+        if window_length > len(df):
+            window_length = len(df) // 2 * 2 + 1 if len(df) >= 3 else 3
+        
+        # df['MACD_smooth'] = savgol_filter(df['MACD'].fillna(0), window_length=window_length, polyorder=2)
+        df['MACD_smooth'] = right_aligned_smoothing(df['MACD'], window_length)
 
         # Signal line
         df['Signal'] = df['MACD_smooth'].ewm(span=signal_window, adjust=False).mean()
@@ -137,41 +315,29 @@ def emd_macd_analysis(ticker):
 
         return df
 
-    df = calculate_emd_macd(df, short_window, long_window, signal_window, smoothing)
-
-    # Step 3: Identify MACD Crossovers
+    # ---------------------------
+    # Crossover Identification Function
+    # ---------------------------
     def identify_crossovers(df):
         """
         Identify bullish and bearish crossovers in the EMD-MACD.
         """
+        # Ensure there are no NaN values in the necessary columns
+        df = df.dropna(subset=['MACD_smooth', 'Signal'])
+
+        # Identify crossovers
         df['Crossover'] = np.where(df['MACD_smooth'] > df['Signal'], 1, 0)
         df['Crossover_Signal'] = df['Crossover'].diff()
 
+        # Extract bullish and bearish crossovers
         bullish_crossovers = df[df['Crossover_Signal'] == 1]
         bearish_crossovers = df[df['Crossover_Signal'] == -1]
 
         return bullish_crossovers, bearish_crossovers
-
-    bullish_crossovers, bearish_crossovers = identify_crossovers(df)
-
-    # Step 4: Determine Market Trend Based on EMD-MACD
-    def determine_trend(df):
-        """
-        Determine the current market trend based on EMD-MACD.
-        """
-        latest_histogram = df['Histogram'].iloc[-1]
-        if latest_histogram > 0:
-            trend = "上升趋势 (Uptrend)"
-        elif latest_histogram < 0:
-            trend = "下降趋势 (Downtrend)"
-        else:
-            trend = "震荡区间 (Sideways)"
-        latest_price = df['close'].iloc[-1]
-        return trend, latest_price
-
-    trend, current_price = determine_trend(df)
-
-    # Step 5: Plot Using Plotly
+    
+    # ---------------------------
+    # Plotting Function
+    # ---------------------------
     def plot_emd_macd(df, bullish_crossovers, bearish_crossovers, ticker,
                      short_window=12, long_window=26, signal_window=9):
         """
@@ -265,139 +431,251 @@ def emd_macd_analysis(ticker):
 
         return fig
 
+    # ---------------------------
+    # Performance Analysis Function
+    # ---------------------------
+    def performance_analysis(df, bullish_crossovers, bearish_crossovers, initial_investment=10000):
+        """
+        计算并展示 EMD-MACD 指标的表现，包括最大回撤、总累计收益、年化收益率和夏普比率。
+        还展示每笔交易的详细信息。信号在收盘时确认，交易在次日开盘价执行。
+        """
+        (
+            avg_bullish_return,
+            bullish_success_rate,
+            total_cumulative_return,
+            annualized_return,
+            sharpe_ratio,
+            max_drawdown,
+            portfolio_values,
+            trades_df
+        ) = evaluate_performance(df, bullish_crossovers, bearish_crossovers, initial_investment)
+
+        # 使用更小的字体展示指标表现
+        st.markdown("""
+            <style>
+            .small-font {
+                font-size: 14px !important;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
+        # 指标表现展示
+        st.markdown("## 📈 EMD-MACD 信号历史回测")
+
+        # 投资组合增长图表
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=pd.to_datetime(bullish_crossovers['date'].tolist() + [df['date'].iloc[-1]]), 
+            y=portfolio_values,
+            mode='lines+markers',
+            name='投资组合价值'
+        ))
+        fig.update_layout(
+            title="假设初始投资为 10万 人民币的投资组合增长",
+            xaxis_title="日期",
+            yaxis_title="投资组合价值 (人民币)",
+            template='plotly_dark'
+        )
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+
+        # Create a grid with columns
+        col1, col2 = st.columns(2)
+
+        # Layout the form inputs in a grid
+        with col1:
+            st.text_input("平均看涨收益率", f"{avg_bullish_return:.2%}")
+            st.text_input("总累计收益率", f"{total_cumulative_return:.2%}")
+            st.text_input("夏普比率", f"{sharpe_ratio:.2f}")
+
+        with col2:
+            st.text_input("看涨信号成功率", f"{bullish_success_rate:.2%}")
+            st.text_input("年化收益率", f"{annualized_return:.2%}")
+            st.text_input("最大回撤", f"{max_drawdown:.2%}")
+
+        st.text("")  # Empty line for spacing
+        st.text("")  # Empty line for spacing
+
+        # 展示交易详情
+        with st.expander("💼 查看交易详情", expanded=True):
+            st.dataframe(trades_df, use_container_width=True)
+
+        return sharpe_ratio  # Return Sharpe Ratio for tuning purposes
+
+    # ---------------------------
+    # Main Logic
+    # ---------------------------
+
+    # Step 1: Fetch Historical Data using custom get_stock_prices function
+    df = get_stock_prices(ticker, start_date, end_date)
+
+    if df is None or df.empty:
+        st.error("❌ 未获取到数据。请检查股票代码并重试。")
+        st.stop()
+
+    # Ensure the 'date' column is in datetime format
+    df['date'] = pd.to_datetime(df['date'])
+
+    # Initialize parameters (may be updated by tuning)
+    params = {
+        'short_window': short_window,
+        'long_window': long_window,
+        'signal_window': signal_window,
+        'smoothing': smoothing
+    }
+
+    # Custom CSS for button styling
+    st.markdown("""
+        <style>
+        .stButton > button {
+            border: 2px solid #007BFF; /* Change the color and thickness as needed */
+            border-radius: 8px; /* Adjust the border radius for a rounded effect */
+            padding: 8px 16px; /* Increase padding to make the button more prominent */
+            font-weight: bold; /* Make the text bold */
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Add a button for parameter tuning
+    if st.sidebar.button("🔍 自动参数调优"):
+        st.sidebar.write("开始参数调优，请稍候...")
+        # Define parameter grid
+        parameter_grid = {
+            'short_window': [5, 10, 12, 15, 20],
+            'long_window': [20, 26, 30, 35],
+            'signal_window': [5, 9, 12],
+            'smoothing': [3, 5, 7]
+        }
+
+        # Perform tuning
+        best_params, tuning_results = tune_parameters(df, parameter_grid)
+
+        if best_params:
+            st.sidebar.success("参数调优完成！最佳参数已应用。")
+            st.sidebar.write(f"**最佳短期EMA窗口**: {best_params['short_window']}")
+            st.sidebar.write(f"**最佳长期EMA窗口**: {best_params['long_window']}")
+            st.sidebar.write(f"**最佳信号线窗口**: {best_params['signal_window']}")
+            st.sidebar.write(f"**最佳平滑参数**: {best_params['smoothing']}")
+        else:
+            st.sidebar.error("参数调优失败。请检查数据或参数范围。")
+
+        # Update parameters with best_params
+        params = best_params if best_params else params  # Retain original params if tuning failed
+
+        # Optionally, display tuning results
+        with st.expander("🔍 查看调优结果"):
+            st.dataframe(tuning_results.sort_values(by='sharpe_ratio', ascending=False).reset_index(drop=True))
+
+    # Apply the selected or tuned parameters
+    short_window = params['short_window']
+    long_window = params['long_window']
+    signal_window = params['signal_window']
+    smoothing = params['smoothing']
+
+    # Step 2: Calculate Ehlers’ Modified MACD (EMD-MACD)
+    df = calculate_emd_macd(df, short_window, long_window, signal_window, smoothing)
+
+    # Step 3: Identify MACD Crossovers
+    bullish_crossovers, bearish_crossovers = identify_crossovers(df)
+     
+     # ---------------------------
+    # New Features: Latest Signal and Hold Recommendation
+    # ---------------------------
+    def get_latest_signal(bullish_crossovers, bearish_crossovers):
+        if bullish_crossovers.empty and bearish_crossovers.empty:
+            return "无最新信号", "无操作建议", "N/A"
+        
+        # Get the latest bullish and bearish crossover dates
+        latest_bullish_date = bullish_crossovers['date'].max() if not bullish_crossovers.empty else pd.Timestamp.min
+        latest_bearish_date = bearish_crossovers['date'].max() if not bearish_crossovers.empty else pd.Timestamp.min
+
+        # Determine which crossover is more recent
+        if latest_bullish_date > latest_bearish_date:
+            latest_signal = "当前看涨"
+            recommendation = "持股"
+            latest_signal_date = latest_bullish_date.strftime("%Y-%m-%d")
+        elif latest_bearish_date > latest_bullish_date:
+            latest_signal = "当前看跌"
+            recommendation = "空仓"
+            latest_signal_date = latest_bearish_date.strftime("%Y-%m-%d")
+        else:
+            latest_signal = "无最新信号"
+            recommendation = "无操作建议"
+            latest_signal_date = "N/A"
+
+        return latest_signal, recommendation, latest_signal_date
+
+    latest_signal, recommendation, latest_signal_date = get_latest_signal(bullish_crossovers, bearish_crossovers)
+
+    # Display Latest Signal, Recommendation, and Timestamp with Custom HTML
+    st.markdown("""
+        <style>
+        .info-box {
+            background-color: #1e1e1e;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .info-title {
+            font-size: 16px;
+            color: #ffffff;
+            margin-bottom: 5px;
+        }
+        .info-content-hold {
+            font-size: 18px;
+            color: #FF4500;  /* LimeGreen */
+            font-weight: bold; /* This makes the text bold */
+        }
+        .info-content-dont-hold {
+            font-size: 18px;
+            color: #32CD32;  /* OrangeRed */
+            font-weight: bold; /* This makes the text bold */
+        }
+        .info-content-no-action {
+            font-size: 18px;
+            color: #a9a9a9;  /* DarkGray */
+            font-weight: bold; /* This makes the text bold */
+        }
+        .info-content-timestamp {
+            font-size: 18px;
+            color: #87CEFA;  /* LightSkyBlue */
+            font-weight: bold; /* This makes the text bold */
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Assign CSS class based on recommendation
+    if recommendation == "持股":
+        recommendation_class = "info-content-hold"
+    elif recommendation == "空仓":
+        recommendation_class = "info-content-dont-hold"
+    else:
+        recommendation_class = "info-content-no-action"
+
+    # Display the information
+    st.markdown(f"""
+        <div class="info-box">
+            <div class="info-title">🔔 最新信号</div>
+            <div class="{recommendation_class}">&nbsp;&nbsp;&nbsp;{latest_signal}</div>
+        </div>
+        <div class="info-box">
+            <div class="info-title">📅 最新信号生成时间</div>
+            <div class="info-content-timestamp">&nbsp;&nbsp;&nbsp;{latest_signal_date}</div>
+        </div>
+        <div class="info-box">
+            <div class="info-title">💡 持股建议</div>
+            <div class="{recommendation_class}">&nbsp;&nbsp;&nbsp;{recommendation}</div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Step 5: Plot Using Plotly
     fig = plot_emd_macd(
         df, bullish_crossovers, bearish_crossovers, ticker,
         short_window, long_window, signal_window
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-    # Step 6: Detailed Actionable Interpretation in Both English and Chinese
-    def detailed_interpretation(
-        bullish_crossovers, bearish_crossovers,
-        current_price, trend, short_window, long_window, signal_window
-    ):
-        """
-        Provide a detailed, actionable interpretation based on EMD-MACD in both English and Chinese.
-        """
-        interpretation_en = ""
-        interpretation_cn = ""
+    # Step 6: Performance Analysis
+    performance_analysis(df, bullish_crossovers, bearish_crossovers, initial_investment=10000)
 
-        # 1. Trend Analysis
-        interpretation_en += f"###### Current Market Trend: {trend}\n\n"
-        interpretation_en += f"**Current Price**: {current_price:.2f}\n\n"
-
-        interpretation_cn += f"###### 当前市场趋势：{trend}\n\n"
-        interpretation_cn += f"**当前价格**：{current_price:.2f}\n\n"
-
-        # 2. Crossover Analysis
-        interpretation_en += "###### Crossover Signals:\n"
-        interpretation_cn += "###### 交叉信号：\n"
-
-        if not bullish_crossovers.empty:
-            latest_bullish = bullish_crossovers.iloc[-1]
-            interpretation_en += (
-                f"- **Bullish Crossover** on {latest_bullish['date'].date()}: "
-                f"EMD-MACD crossed above the Signal Line, indicating a potential **buying opportunity**.\n"
-            )
-            interpretation_cn += (
-                f"- **看涨交叉** 于 {latest_bullish['date'].date()}：EMD-MACD 上穿信号线，表明潜在的 **买入机会**。\n"
-            )
-        else:
-            interpretation_en += "- No recent Bullish Crossovers detected.\n"
-            interpretation_cn += "- 未检测到近期的看涨交叉。\n"
-
-        if not bearish_crossovers.empty:
-            latest_bearish = bearish_crossovers.iloc[-1]
-            interpretation_en += (
-                f"- **Bearish Crossover** on {latest_bearish['date'].date()}: "
-                f"EMD-MACD crossed below the Signal Line, indicating a potential **selling opportunity**.\n"
-            )
-            interpretation_cn += (
-                f"- **看跌交叉** 于 {latest_bearish['date'].date()}：EMD-MACD 下穿信号线，表明潜在的 **卖出机会**。\n"
-            )
-        else:
-            interpretation_en += "- No recent Bearish Crossovers detected.\n"
-            interpretation_cn += "- 未检测到近期的看跌交叉。\n"
-
-        interpretation_en += "\n"
-        interpretation_cn += "\n"
-
-        # 3. Actionable Recommendations
-        interpretation_en += "###### Actionable Recommendations:\n"
-        interpretation_cn += "###### 可操作的建议：\n"
-
-        # Bullish Crossovers
-        if not bullish_crossovers.empty:
-            interpretation_en += (
-                f"- **Buy Signal**: When EMD-MACD crosses above the Signal Line (EMA{signal_window}), consider **entering a long position**.\n"
-            )
-            interpretation_cn += (
-                f"- **买入信号**：当 EMD-MACD 上穿信号线 (EMA{signal_window}) 时，考虑 **建立多头仓位**。\n"
-            )
-
-        # Bearish Crossovers
-        if not bearish_crossovers.empty:
-            interpretation_en += (
-                f"- **Sell Signal**: When EMD-MACD crosses below the Signal Line (EMA{signal_window}), consider **entering a short position**.\n"
-            )
-            interpretation_cn += (
-                f"- **卖出信号**：当 EMD-MACD 下穿信号线 (EMA{signal_window}) 时，考虑 **建立空头仓位**。\n"
-            )
-
-        # Overall Trend
-        interpretation_en += "\n###### Overall Trend Insight:\n"
-        interpretation_cn += "\n###### 整体趋势见解：\n"
-        if trend == "上升趋势 (Uptrend)":
-            interpretation_en += f"- The market is in an **uptrend**, supported by positive EMD-MACD histogram values.\n"
-            interpretation_cn += f"- 市场处于 **上升趋势**，由正的 EMD-MACD 柱状图值支持。\n"
-        elif trend == "下降趋势 (Downtrend)":
-            interpretation_en += f"- The market is in a **downtrend**, supported by negative EMD-MACD histogram values.\n"
-            interpretation_cn += f"- 市场处于 **下降趋势**，由负的 EMD-MACD 柱状图值支持。\n"
-        else:
-            interpretation_en += f"- The market is **sideways**, indicating consolidation with mixed EMD-MACD signals.\n"
-            interpretation_cn += f"- 市场处于 **横盘**，表明整合期，EMD-MACD 信号混合。\n"
-
-        interpretation_en += "\n"
-        interpretation_cn += "\n"
-
-        # 4. Risk Management
-        interpretation_en += "###### Risk Management:\n"
-        interpretation_cn += "###### 风险管理：\n"
-        interpretation_en += "- **Stop-Loss**: Place stop-loss orders below recent support levels or a certain percentage below the entry point.\n"
-        interpretation_cn += "- **止损**：在近期支撑位以下或入场点下方一定比例处设置止损订单。\n"
-        interpretation_en += "- **Take-Profit**: Set target levels based on resistance levels or use a trailing stop to secure profits.\n"
-        interpretation_cn += "- **止盈**：根据阻力位设置目标水平或使用移动止盈以确保利润。\n"
-
-        # 5. Market Conditions
-        interpretation_en += "\n###### Optimal Market Conditions for Applying This Strategy:\n"
-        interpretation_cn += "\n###### 应用此策略的最佳市场条件：\n"
-        interpretation_en += "- **Trending Markets**: Most effective in clear uptrends or downtrends where EMD-MACD confirms the direction.\n"
-        interpretation_cn += "- **趋势市场**：在 EMD-MACD 确认方向的明显上升或下降趋势中最为有效。\n"
-        interpretation_en += "- **High Volume**: Ensure significant price movements are supported by high volume to validate EMD-MACD signals.\n"
-        interpretation_cn += "- **高成交量**：确保重要的价格波动由高成交量支持，以验证 EMD-MACD 信号。\n"
-        interpretation_en += "- **Avoid in Sideways/Noisy Markets**: EMD-MACD may produce false signals in choppy or non-trending markets.\n"
-        interpretation_cn += "- **避免在横盘/嘈杂市场**：EMD-MACD 可能在波动剧烈或无趋势的市场中产生虚假信号。\n"
-
-        return interpretation_en, interpretation_cn
-
-    interpret_en, interpret_cn = detailed_interpretation(
-        bullish_crossovers, bearish_crossovers,
-        current_price, trend, short_window, long_window, signal_window
-    )
-
-    # Display Interpretations
-    st.markdown("##### 📄 指标解读 (Indicator Interpretation)")
-
-    # Tabs for English and Chinese
-    tab1, tab2 = st.tabs(["🇨🇳 中文", "🇺🇸 English"])
-
-    with tab1:
-        st.markdown(interpret_cn)
-
-    with tab2:
-        st.markdown(interpret_en)
-
-    # Optional: Display Data Table
-    with st.expander("📊 查看原始数据 (View Raw Data)"):
+    with st.expander("📊 查看原始信号数据"):
         st.dataframe(df)
-

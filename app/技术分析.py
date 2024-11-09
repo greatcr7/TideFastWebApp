@@ -144,6 +144,13 @@ def home():
 # ---------------------------
 def main():
     st.title("技术分析 📈")
+    
+    st.logo(
+        "images/logo.png",
+        link="https://platform.tidefast.com",
+        size="large", 
+        icon_image="images/logo.png",
+    )
 
     # ---------------------------
     # Selection Bar (Fixed at Top)

@@ -4,7 +4,6 @@ import pandas as pd
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 
-from market.account_number import display_stock_account_statistics
 from market.below_net_asset import display_below_net_asset_statistics
 from market.board_change import display_stock_board_change
 from market.cctv_news import display_news_cctv
@@ -31,7 +30,7 @@ st.logo(
 st.sidebar.header("市场脉搏")
 dataset_choice = st.sidebar.radio(
     "请选择要查看的数据集",
-    ("概念板块异动", "股票盘口异动", "新闻联播全文", "股债利差", "股票账户数", "大盘拥挤度", "破净股统计",)
+    ("概念板块异动", "股票盘口异动", "新闻联播全文", "股债利差", "大盘拥挤度", "破净股统计",)
 )
 
 if dataset_choice == "大盘拥挤度":
@@ -51,7 +50,3 @@ elif dataset_choice == "股票盘口异动":
 
 elif dataset_choice == "概念板块异动":
     display_stock_board_change()
-
-elif dataset_choice == "股票账户数":
-    display_stock_account_statistics()
-

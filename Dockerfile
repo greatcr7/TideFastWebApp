@@ -7,4 +7,4 @@ RUN python -m pip install --upgrade pip
 RUN python -m pip install -r requirements.txt
 
 EXPOSE 8501
-CMD ["streamlit", "run", "市场脉搏.py"]
+CMD ["streamlit", "run", "技术分析.py"]
