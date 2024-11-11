@@ -5,7 +5,6 @@ import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 
 
-@st.cache_data
 def fetch_below_net_asset_data(symbol: str) -> pd.DataFrame:
     """
     Fetch 破净股统计 data using AkShare.

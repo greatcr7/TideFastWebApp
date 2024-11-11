@@ -6,7 +6,6 @@ import pandas as pd
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 
-@st.cache_data
 def fetch_equity_bond_spread_data():
     """
     Fetch 股债利差 data using AkShare.

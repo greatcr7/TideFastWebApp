@@ -453,5 +453,4 @@ def main():
             df_quotes = fetch_market_quotes(st.session_state.selected_stock)
         display_market_quotes(st.session_state.selected_stock, df_quotes)
 
-if __name__ == "__main__":
-    main()
+main()

@@ -6,7 +6,6 @@ import plotly.express as px
 import json
 import plotly.graph_objs as go
 
-@st.cache_data
 def fetch_stock_board_change_data() -> pd.DataFrame:
     """
     使用 AkShare 获取当日板块异动详情数据。

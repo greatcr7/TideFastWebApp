@@ -4,7 +4,6 @@ import akshare as ak
 import pandas as pd
 from datetime import datetime, timedelta
 
-@st.cache_data
 def fetch_news_cctv_data(date: str) -> pd.DataFrame:
     """
     使用 AkShare 获取新闻联播文字稿数据。

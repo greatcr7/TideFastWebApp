@@ -4,8 +4,6 @@ import pandas as pd
 from datetime import datetime
 import pytz
 
-
-@st.cache_data
 def fetch_stock_changes_data(symbol: str) -> pd.DataFrame:
     """
     使用 AkShare 获取盘口异动数据。

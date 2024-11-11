@@ -160,7 +160,6 @@ def main():
         selection_cols = st.columns(2)
 
         with selection_cols[0]:
-            st.markdown("### 选择股票 📊")
             selected_stock_display = st.selectbox(
                 "搜索并选择股票",
                 ["请选择一个股票"] + stock_display_names,
@@ -177,7 +176,6 @@ def main():
                 st.session_state.selected_stock = None
 
         with selection_cols[1]:
-            st.markdown("### 选择技术指标 📈")
             dropdown_selection = st.selectbox(
                 "选择指标",
                 ["请选择一个指标"] + list(page_names_to_funcs.keys()),
@@ -213,5 +211,4 @@ def main():
     else:
         home()
 
-if __name__ == "__main__":
-    main()
+main()

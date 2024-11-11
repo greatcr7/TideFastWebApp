@@ -4,7 +4,6 @@ import pandas as pd
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 
-@st.cache_data
 def fetch_market_congestion_data():
     """
     Fetch 大盘拥挤度 data using AkShare.
