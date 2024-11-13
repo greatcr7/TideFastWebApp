@@ -110,7 +110,7 @@ def emd_macd_analysis(ticker):
     # ---------------------------
     # Parameter Tuning Function
     # ---------------------------
-    def tune_parameters(df, parameter_grid, initial_investment=10000):
+    def tune_parameters(df, parameter_grid, initial_investment=100000):
         """
         Perform grid search to find the best parameter combination based on Sharpe Ratio.
         """
@@ -173,7 +173,7 @@ def emd_macd_analysis(ticker):
     # ---------------------------
     # Performance Evaluation Helper
     # ---------------------------
-    def evaluate_performance(df, bullish_crossovers, bearish_crossovers, initial_investment=10000):
+    def evaluate_performance(df, bullish_crossovers, bearish_crossovers, initial_investment=100000):
         """
         Compute performance metrics including Sharpe Ratio.
         """
@@ -434,7 +434,7 @@ def emd_macd_analysis(ticker):
     # ---------------------------
     # Performance Analysis Function
     # ---------------------------
-    def performance_analysis(df, bullish_crossovers, bearish_crossovers, initial_investment=10000):
+    def performance_analysis(df, bullish_crossovers, bearish_crossovers, initial_investment=100000):
         """
         计算并展示 EMD-MACD 指标的表现，包括最大回撤、总累计收益、年化收益率和夏普比率。
         还展示每笔交易的详细信息。信号在收盘时确认，交易在次日开盘价执行。
@@ -563,7 +563,7 @@ def emd_macd_analysis(ticker):
 
         # Optionally, display tuning results
         with st.expander("🔍 查看调优结果"):
-            st.dataframe(tuning_results.sort_values(by='sharpe_ratio', ascending=False).reset_index(drop=True))
+            st.dataframe(tuning_results.sort_values(by='sharpe_ratio', ascending=False).reset_index(drop=True), use_container_width=True)
 
     # Apply the selected or tuned parameters
     short_window = params['short_window']
@@ -672,10 +672,10 @@ def emd_macd_analysis(ticker):
         df, bullish_crossovers, bearish_crossovers, ticker,
         short_window, long_window, signal_window
     )
-    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False, 'scrollZoom': False})
 
     # Step 6: Performance Analysis
-    performance_analysis(df, bullish_crossovers, bearish_crossovers, initial_investment=10000)
+    performance_analysis(df, bullish_crossovers, bearish_crossovers, initial_investment=100000)
 
     with st.expander("📊 查看原始信号数据"):
         st.dataframe(df)

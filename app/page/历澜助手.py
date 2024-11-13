@@ -21,9 +21,23 @@ st.logo(
 load_dotenv()
 openai_key = os.getenv('OPENAI_API_KEY')
 
+
 # Create a main navigation section on the page
 def home():
     st.title("历澜助手")
+
+    if 'name' not in st.session_state:
+        st.session_state['name'] = 'John Doe'
+
+    st.header(st.session_state['name'])
+
+    if st.button('Jane'):
+        st.session_state['name'] = 'Jane Doe'
+
+    if st.button('John'):
+        st.session_state['name'] = 'John Doe'
+
+    st.header(st.session_state['name'])
 
     # Display the disclaimer
     if "agreed_to_disclaimer" not in st.session_state:
@@ -45,7 +59,10 @@ def home():
             st.session_state["agreed_to_disclaimer"] = True
             st.rerun()
     else:
-        # Show the chatbot interface only if the user agrees to the disclaimer
+        # Instructions for developers: Make sure the OpenAI API key is set correctly in the environment variables
+        # and that the 'openai_model' session state is initialized before starting the conversation.
+        
+        # Initialize the OpenAI client and model
         client = OpenAI(api_key=openai_key)
 
         if "openai_model" not in st.session_state:
@@ -53,17 +70,31 @@ def home():
 
         if "messages" not in st.session_state:
             st.session_state.messages = []
-
+            st.write("")
+            st.write("")
+            st.write("")
+            st.write("")
+            st.markdown("""
+            **使用提示：**
+            - 请在下方的输入框中输入您的问题或想要了解的投资信息。
+            - 历澜AI助手将为您提供实时解答，但请记住，这些建议仅供参考，不构成投资建议。
+            - 使用前，请先阅读并同意免责声明，以确保您了解使用本助手的相关风险。
+            - 随时开始对话，AI助手会尽力为您提供有用的信息！
+            """)
+            
+        # Display all chat messages
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
+        # Handle new user input
         if prompt := st.chat_input("Hi！我是历澜AI助手？有什么问题能帮到您吗？"):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
 
             with st.chat_message("assistant"):
+                # Generate a response from OpenAI's GPT model and display it
                 stream = client.chat.completions.create(
                     model=st.session_state["openai_model"],
                     messages=[
