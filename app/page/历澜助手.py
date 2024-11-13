@@ -26,19 +26,6 @@ openai_key = os.getenv('OPENAI_API_KEY')
 def home():
     st.title("历澜助手")
 
-    if 'name' not in st.session_state:
-        st.session_state['name'] = 'John Doe'
-
-    st.header(st.session_state['name'])
-
-    if st.button('Jane'):
-        st.session_state['name'] = 'Jane Doe'
-
-    if st.button('John'):
-        st.session_state['name'] = 'John Doe'
-
-    st.header(st.session_state['name'])
-
     # Display the disclaimer
     if "agreed_to_disclaimer" not in st.session_state:
         st.session_state["agreed_to_disclaimer"] = False
